@@ -29,8 +29,8 @@ export const DashboardStyles = StyleSheet.create({
     paddingBottom: Spacing.md,
     backgroundColor: Semantic.background,
   },
-  headerLeft:      { gap: 2 },
-  headerGreeting:  {
+  headerLeft:     { gap: 2 },
+  headerGreeting: {
     fontSize: Typography.sizes.xs,
     color: Semantic.textMuted,
     fontWeight: Typography.weights.medium,
@@ -49,6 +49,66 @@ export const DashboardStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     ...Shadow.md,
+  },
+
+  // =========================================================================
+  // DATE RANGE FILTER TABS
+  // =========================================================================
+  filterRow: {
+    flexDirection: 'row',
+    backgroundColor: Semantic.surface,
+    borderRadius: BorderRadius.xl,
+    padding: 4,
+    ...Shadow.sm,
+  },
+  filterTab: {
+    flex: 1,
+    paddingVertical: Spacing.sm,
+    alignItems: 'center',
+    borderRadius: BorderRadius.lg,
+  },
+  filterTabActive: {
+    backgroundColor: Colors.trustNavy,
+    ...Shadow.navy,
+  },
+  filterTabText: {
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.semibold,
+    color: Semantic.textMuted,
+  },
+  filterTabTextActive: {
+    color: Colors.white,
+    fontWeight: Typography.weights.bold,
+  },
+
+  // =========================================================================
+  // QUICK EXPENSE SHORTCUTS
+  // =========================================================================
+  quickRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  quickItem: {
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  quickIconWrap: {
+    width: 52, height: 52,
+    borderRadius: BorderRadius.xl,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: Semantic.border,
+  },
+  quickIconWrapActive: {
+    borderColor: 'transparent',
+  },
+  quickLabel: {
+    fontSize: Typography.sizes['2xs'],
+    color: Semantic.textMuted,
+    fontWeight: Typography.weights.medium,
+    textAlign: 'center',
   },
 
   // =========================================================================
@@ -76,7 +136,7 @@ export const DashboardStyles = StyleSheet.create({
   },
 
   // =========================================================================
-  // BALANCE CARD (hero — navy background)
+  // BALANCE CARD
   // =========================================================================
   balanceCard: {
     backgroundColor: Semantic.cardHeroBg,
@@ -150,7 +210,7 @@ export const DashboardStyles = StyleSheet.create({
   },
 
   // =========================================================================
-  // STATS ROW (2 mini cards)
+  // STATS ROW
   // =========================================================================
   statsRow: { flexDirection: 'row', gap: Spacing.md },
   statCard: {
@@ -182,44 +242,6 @@ export const DashboardStyles = StyleSheet.create({
     fontSize: Typography.sizes.xs,
     color: Semantic.textMuted,
     marginTop: 2,
-  },
-
-  // =========================================================================
-  // SMART PURCHASE BUTTON (indigo banner)
-  // =========================================================================
-  smartPurchaseBtn: {
-    backgroundColor: Semantic.secondary,
-    borderRadius: BorderRadius.xl,
-    padding: Spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    ...Shadow.indigo,
-  },
-  smartPurchaseLeft:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.lg },
-  smartPurchaseIconWrap: {
-    width: 44, height: 44,
-    borderRadius: BorderRadius.md,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  smartPurchaseTitle: {
-    fontSize: Typography.sizes.base,
-    fontWeight: Typography.weights.bold,
-    color: Colors.white,
-  },
-  smartPurchaseSubtitle: {
-    fontSize: Typography.sizes.xs,
-    color: 'rgba(255,255,255,0.65)',
-    marginTop: 2,
-  },
-  smartPurchaseArrow: {
-    width: 32, height: 32,
-    borderRadius: BorderRadius.md,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 
   // =========================================================================
@@ -297,20 +319,9 @@ export const DashboardStyles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Semantic.divider,
   },
-  spendingTotalLabel: {
-    fontSize: Typography.sizes.xs,
-    color: Semantic.textMuted,
-    marginBottom: 3,
-  },
-  spendingTotalAmount: {
-    fontSize: Typography.sizes['2xl'],
-    fontWeight: Typography.weights.extrabold,
-    color: Semantic.text,
-  },
-  spendingTotalCycleLabel: {
-    fontSize: Typography.sizes.xs,
-    color: Semantic.textMuted,
-  },
+  spendingTotalLabel:     { fontSize: Typography.sizes.xs, color: Semantic.textMuted, marginBottom: 3 },
+  spendingTotalAmount:    { fontSize: Typography.sizes['2xl'], fontWeight: Typography.weights.extrabold, color: Semantic.text },
+  spendingTotalCycleLabel:{ fontSize: Typography.sizes.xs, color: Semantic.textMuted },
   categoryRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -318,11 +329,7 @@ export const DashboardStyles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Semantic.divider,
   },
-  categoryRowLast: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: Spacing.md,
-  },
+  categoryRowLast: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.md },
   categoryIconWrap: {
     width: 38, height: 38,
     borderRadius: BorderRadius.md,
@@ -331,25 +338,12 @@ export const DashboardStyles = StyleSheet.create({
     marginRight: Spacing.md,
   },
   categoryInfo:    { flex: 1 },
-  categoryName: {
-    fontSize: Typography.sizes.sm,
-    fontWeight: Typography.weights.semibold,
-    color: Semantic.text,
-    marginBottom: 5,
-  },
-  categoryBar:  { height: 4, borderRadius: BorderRadius.full, backgroundColor: Semantic.border, overflow: 'hidden' },
-  categoryFill: { height: 4, borderRadius: BorderRadius.full },
-  categoryRight: { alignItems: 'flex-end', marginLeft: Spacing.md },
-  categoryAmount: {
-    fontSize: Typography.sizes.sm,
-    fontWeight: Typography.weights.bold,
-    color: Semantic.text,
-  },
-  categoryPct: {
-    fontSize: Typography.sizes.xs,
-    color: Semantic.textMuted,
-    marginTop: 2,
-  },
+  categoryName:    { fontSize: Typography.sizes.sm, fontWeight: Typography.weights.semibold, color: Semantic.text, marginBottom: 5 },
+  categoryBar:     { height: 4, borderRadius: BorderRadius.full, backgroundColor: Semantic.border, overflow: 'hidden' },
+  categoryFill:    { height: 4, borderRadius: BorderRadius.full },
+  categoryRight:   { alignItems: 'flex-end', marginLeft: Spacing.md },
+  categoryAmount:  { fontSize: Typography.sizes.sm, fontWeight: Typography.weights.bold, color: Semantic.text },
+  categoryPct:     { fontSize: Typography.sizes.xs, color: Semantic.textMuted, marginTop: 2 },
 
   // =========================================================================
   // ALERTS LIST CARD
@@ -384,33 +378,11 @@ export const DashboardStyles = StyleSheet.create({
     flexShrink: 0,
   },
   alertContent:  { flex: 1 },
-  alertTitle: {
-    fontSize: Typography.sizes.sm,
-    fontWeight: Typography.weights.semibold,
-    color: Semantic.text,
-    marginBottom: 2,
-  },
-  alertMessage: {
-    fontSize: Typography.sizes.xs,
-    color: Semantic.textSecondary,
-    lineHeight: 17,
-  },
-  alertEmptyWrap: {
-    alignItems: 'center',
-    paddingVertical: Spacing.xxl,
-    gap: Spacing.sm,
-  },
-  alertEmptyTitle: {
-    fontSize: Typography.sizes.sm,
-    fontWeight: Typography.weights.semibold,
-    color: Semantic.text,
-  },
-  alertEmptyText: {
-    fontSize: Typography.sizes.xs,
-    color: Semantic.textMuted,
-    textAlign: 'center',
-    paddingHorizontal: Spacing.xl,
-  },
+  alertTitle:    { fontSize: Typography.sizes.sm, fontWeight: Typography.weights.semibold, color: Semantic.text, marginBottom: 2 },
+  alertMessage:  { fontSize: Typography.sizes.xs, color: Semantic.textSecondary, lineHeight: 17 },
+  alertEmptyWrap:  { alignItems: 'center', paddingVertical: Spacing.xxl, gap: Spacing.sm },
+  alertEmptyTitle: { fontSize: Typography.sizes.sm, fontWeight: Typography.weights.semibold, color: Semantic.text },
+  alertEmptyText:  { fontSize: Typography.sizes.xs, color: Semantic.textMuted, textAlign: 'center', paddingHorizontal: Spacing.xl },
 
   // =========================================================================
   // INCOME INFO CARD
@@ -421,53 +393,20 @@ export const DashboardStyles = StyleSheet.create({
     padding: Spacing.lg,
     ...Shadow.sm,
   },
-  incomeTopRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  incomeLeft:     { gap: 4 },
-  incomeLabel: {
-    fontSize: Typography.sizes.xs,
-    color: Semantic.textMuted,
-    fontWeight: Typography.weights.medium,
-  },
-  incomeAmount: {
-    fontSize: Typography.sizes['2xl'],
-    fontWeight: Typography.weights.extrabold,
-    color: Semantic.text,
-  },
-  incomeMetaRow:  { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginTop: 2 },
-  incomePill: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 3,
-    borderRadius: BorderRadius.sm,
-    backgroundColor: Semantic.primaryBg,
-  },
-  incomePillText: {
-    fontSize: Typography.sizes.xs,
-    fontWeight: Typography.weights.semibold,
-    color: Semantic.primary,
-  },
+  incomeTopRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  incomeLeft:      { gap: 4 },
+  incomeLabel:     { fontSize: Typography.sizes.xs, color: Semantic.textMuted, fontWeight: Typography.weights.medium },
+  incomeAmount:    { fontSize: Typography.sizes['2xl'], fontWeight: Typography.weights.extrabold, color: Semantic.text },
+  incomeMetaRow:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginTop: 2 },
+  incomePill:      { paddingHorizontal: Spacing.sm, paddingVertical: 3, borderRadius: BorderRadius.sm, backgroundColor: Semantic.primaryBg },
+  incomePillText:  { fontSize: Typography.sizes.xs, fontWeight: Typography.weights.semibold, color: Semantic.primary },
   incomeSeparator: { width: 3, height: 3, borderRadius: BorderRadius.full, backgroundColor: Semantic.border },
-  incomeCycleText: {
-    fontSize: Typography.sizes.xs,
-    color: Semantic.textMuted,
-  },
-  incomeIconWrap: {
-    width: 48, height: 48,
-    borderRadius: BorderRadius.lg,
-    backgroundColor: Semantic.primaryBg,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  incomeDivider: { height: 1, backgroundColor: Semantic.divider, marginVertical: Spacing.lg },
-  incomeNextRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  incomeNextLabel: {
-    fontSize: Typography.sizes.xs,
-    color: Semantic.textMuted,
-  },
-  incomeNextDate: {
-    fontSize: Typography.sizes.sm,
-    fontWeight: Typography.weights.bold,
-    color: Semantic.text,
-  },
+  incomeCycleText: { fontSize: Typography.sizes.xs, color: Semantic.textMuted },
+  incomeIconWrap:  { width: 48, height: 48, borderRadius: BorderRadius.lg, backgroundColor: Semantic.primaryBg, justifyContent: 'center', alignItems: 'center' },
+  incomeDivider:   { height: 1, backgroundColor: Semantic.divider, marginVertical: Spacing.lg },
+  incomeNextRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  incomeNextLabel: { fontSize: Typography.sizes.xs, color: Semantic.textMuted },
+  incomeNextDate:  { fontSize: Typography.sizes.sm, fontWeight: Typography.weights.bold, color: Semantic.text },
 
   // =========================================================================
   // ERROR STATE
@@ -479,21 +418,12 @@ export const DashboardStyles = StyleSheet.create({
     gap: Spacing.md,
     padding: Spacing.xxl,
   },
-  errorStateTitle: {
-    fontSize: Typography.sizes.lg,
-    fontWeight: Typography.weights.bold,
-    color: Semantic.text,
-  },
-  errorStateMessage: {
-    fontSize: Typography.sizes.sm,
-    color: Semantic.textMuted,
-    textAlign: 'center',
-    lineHeight: 21,
-  },
+  errorStateTitle:   { fontSize: Typography.sizes.lg, fontWeight: Typography.weights.bold, color: Semantic.text },
+  errorStateMessage: { fontSize: Typography.sizes.sm, color: Semantic.textMuted, textAlign: 'center', lineHeight: 21 },
 
   // =========================================================================
   // LOADING SKELETON
   // =========================================================================
-  skeletonWrap: { flex: 1, padding: Spacing.lg, gap: Spacing.lg },
+  skeletonWrap:  { flex: 1, padding: Spacing.lg, gap: Spacing.lg },
   skeletonBlock: { borderRadius: BorderRadius.xl, backgroundColor: Semantic.border },
 });
