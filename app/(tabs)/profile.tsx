@@ -1,5 +1,6 @@
 import { Colors, Semantic } from '@constants/colors';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -38,6 +39,7 @@ function FadeSlide({ children, delay = 0 }: { children: React.ReactNode; delay?:
 
 // ── Screen ─────────────────────────────────────────────────────────────────────
 export default function ProfileScreen() {
+  const router                    = useRouter();
   const { logout, user }          = useAuth();
   const { profile, savingsGoals } = useUser();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -83,6 +85,7 @@ export default function ProfileScreen() {
             incomeType={p.incomeType}
             incomeCycle={p.incomeCycle}
             incomeAmount={p.incomeAmount}
+            onEditPress={() => router.push('/edit-profile')}
           />
         </FadeSlide>
 

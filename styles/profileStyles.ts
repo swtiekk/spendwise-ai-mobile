@@ -42,6 +42,23 @@ export const ProfileStyles = StyleSheet.create({
     letterSpacing: Typography.letterSpacing.wide,
   },
 
+  // ── NEW: Edit Profile button in the header ────────────────────────────────
+  headerEditBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    backgroundColor: Semantic.primaryBg,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 7,
+    borderRadius: BorderRadius.full,
+  },
+  headerEditBtnText: {
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.bold,
+    color: Semantic.primary,
+  },
+  // ─────────────────────────────────────────────────────────────────────────
+
   // =========================================================================
   // SECTION HEADER (dot + uppercase label)
   // =========================================================================

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Text, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { ProfileStyles as s } from '../../styles/profileStyles';
 import { formatCurrency } from '../../utils/formatting';
 
@@ -10,10 +10,11 @@ interface UserInfoProps {
   incomeType:   string;
   incomeCycle:  string;
   incomeAmount: number;
+  onEditPress?: () => void;   // ← NEW (optional, safe to omit)
 }
 
 export const UserInfo: React.FC<UserInfoProps> = ({
-  name, email, incomeType, incomeCycle, incomeAmount,
+  name, email, incomeType, incomeCycle, incomeAmount, onEditPress,
 }) => {
   const initials = name
     .split(' ')
@@ -33,7 +34,20 @@ export const UserInfo: React.FC<UserInfoProps> = ({
           <Text style={s.userName}>{name}</Text>
           <Text style={s.userEmail}>{email}</Text>
         </View>
-        <Ionicons name="person-circle-outline" size={22} color="rgba(255,255,255,0.25)" />
+
+        {/* ── Was: static icon. Now: tappable edit button ── */}
+        <TouchableOpacity
+          onPress={onEditPress}
+          disabled={!onEditPress}
+          hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+          activeOpacity={0.65}
+        >
+          <Ionicons
+            name="create-outline"
+            size={22}
+            color="rgba(255,255,255,0.45)"
+          />
+        </TouchableOpacity>
       </View>
 
       {/* ── Divider ── */}
