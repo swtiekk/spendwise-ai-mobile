@@ -15,6 +15,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SuccessNotification } from '../../components/common/SuccessNotification';
@@ -45,21 +46,22 @@ function FadeSlide({ children, delay = 0 }: { children: React.ReactNode; delay?:
 // ── Screen ─────────────────────────────────────────────────────────────────────
 export default function AddExpenseScreen() {
   const router = useRouter();
+  const { height } = useWindowDimensions();
 
-  // ── Lifted state — shared between form and AI sheet ───────────────────────
+  // Dynamic desc height so content fills screen on any device size
+  // 780 = approx sum of all other elements (header + amount card + category + buttons + AI + gaps)
+  const descHeight = Math.max(80, height - 780);
+
+  // ── Lifted state ──────────────────────────────────────────────────────────
   const [amount,      setAmount]      = useState('');
   const [category,    setCategory]    = useState<Category | null>(null);
   const [description, setDescription] = useState('');
-
-  // ── UI state ──────────────────────────────────────────────────────────────
   const [showSuccess,  setShowSuccess]  = useState(false);
   const [showAiSheet,  setShowAiSheet]  = useState(false);
 
-  // ── Derived: enable AI button only when amount + category are filled ───────
   const parsedAmount   = parseFloat(amount);
   const canCheckWithAi = !isNaN(parsedAmount) && parsedAmount > 0 && category !== null;
 
-  // ── Success handler — called by AddExpenseForm's onSuccess ────────────────
   const handleSuccess = () => {
     setShowSuccess(true);
     setTimeout(() => {
@@ -68,7 +70,6 @@ export default function AddExpenseScreen() {
     }, 1800);
   };
 
-  // ── Reset ─────────────────────────────────────────────────────────────────
   const handleReset = () => {
     setAmount('');
     setCategory(null);
@@ -76,26 +77,17 @@ export default function AddExpenseScreen() {
   };
 
   return (
-    <SafeAreaView style={s.screen}>
+    <SafeAreaView style={s.screen} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={Semantic.background} />
-      
 
       {/* ── Header ── */}
       <FadeSlide delay={0}>
         <View style={s.header}>
-          <TouchableOpacity
-            style={s.headerCloseBtn}
-            onPress={() => router.back()}
-            activeOpacity={0.7}
-          >
+          <TouchableOpacity style={s.headerCloseBtn} onPress={() => router.back()} activeOpacity={0.7}>
             <Ionicons name="close" size={20} color={Semantic.text} />
           </TouchableOpacity>
           <Text style={s.headerTitle}>Add Expense</Text>
-          <TouchableOpacity
-            style={s.headerResetBtn}
-            onPress={handleReset}
-            activeOpacity={0.7}
-          >
+          <TouchableOpacity style={s.headerResetBtn} onPress={handleReset} activeOpacity={0.7}>
             <Text style={s.headerResetText}>Reset</Text>
           </TouchableOpacity>
         </View>
@@ -111,7 +103,6 @@ export default function AddExpenseScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* ── AddExpenseForm — fully self-contained, state lifted via props ── */}
           <FadeSlide delay={60}>
             <AddExpenseForm
               amount={amount}
@@ -122,6 +113,7 @@ export default function AddExpenseScreen() {
               onDescriptionChange={setDescription}
               onSuccess={handleSuccess}
               onCancel={() => router.back()}
+              descHeight={descHeight}
             />
           </FadeSlide>
 
@@ -159,21 +151,12 @@ export default function AddExpenseScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* ── Success notification ── */}
-      <SuccessNotification
-        visible={showSuccess}
-        message="Expense added successfully!"
-      />
+      <SuccessNotification visible={showSuccess} message="Expense added successfully!" />
 
-      {/* ── Smart Purchase AI Bottom Sheet ── */}
       <SmartPurchaseSheet
         visible={showAiSheet}
         onClose={() => setShowAiSheet(false)}
-        onProceed={() => {
-          // Close sheet — user still taps "Add Expense" in the form themselves
-          // This keeps the form's own validation + submission intact
-          setShowAiSheet(false);
-        }}
+        onProceed={() => setShowAiSheet(false)}
         amount={parsedAmount || 0}
         category={category ?? ''}
         description={description}
@@ -182,11 +165,10 @@ export default function AddExpenseScreen() {
   );
 }
 
-// Screen-local styles
 const sc = StyleSheet.create({
   aiSection: {
     marginTop: Spacing.sm,
-    marginBottom: Spacing.md,
+    marginBottom: 0,
   },
   aiSectionHeader: {
     flexDirection: 'row',
@@ -206,9 +188,7 @@ const sc = StyleSheet.create({
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
-  aiCheckBtnDisabled: {
-    opacity: 0.4,
-  },
+  aiCheckBtnDisabled: { opacity: 0.4 },
   aiHintText: {
     fontSize: Typography.sizes.xs,
     color: Semantic.textMuted,

@@ -14,14 +14,13 @@ type Category = keyof typeof ExpenseCategories;
 interface AddExpenseFormProps {
   onSuccess?: () => void;
   onCancel?:  () => void;
-  // Optional controlled props — used by add-expense screen
-  // so the AI sheet can read the current values
   amount?:          string;
   onAmountChange?:  (v: string) => void;
   category?:        Category | null;
   onCategoryChange?:(v: Category | null) => void;
   description?:     string;
   onDescriptionChange?: (v: string) => void;
+  descHeight?: number; // ← dynamic height from screen
 }
 
 export const AddExpenseForm: React.FC<AddExpenseFormProps> = ({
@@ -33,10 +32,10 @@ export const AddExpenseForm: React.FC<AddExpenseFormProps> = ({
   onCategoryChange,
   description:     descriptionProp,
   onDescriptionChange,
+  descHeight,
 }) => {
   const { createExpense, isLoading } = useExpenses();
 
-  // Use internal state when uncontrolled, external when controlled
   const [amountInternal,      setAmountInternal]      = useState('');
   const [categoryInternal,    setCategoryInternal]    = useState<Category | null>(null);
   const [descriptionInternal, setDescriptionInternal] = useState('');
@@ -45,7 +44,7 @@ export const AddExpenseForm: React.FC<AddExpenseFormProps> = ({
   const category    = categoryProp    !== undefined ? categoryProp    : categoryInternal;
   const description = descriptionProp ?? descriptionInternal;
 
-  const setAmount      = (v: string)          => { onAmountChange?.(v)   ?? void setAmountInternal(v); if (onAmountChange) onAmountChange(v); else setAmountInternal(v); };
+  const setAmount      = (v: string)          => { if (onAmountChange) onAmountChange(v); else setAmountInternal(v); };
   const setCategory    = (v: Category | null) => { if (onCategoryChange) onCategoryChange(v); else setCategoryInternal(v); };
   const setDescription = (v: string)          => { if (onDescriptionChange) onDescriptionChange(v); else setDescriptionInternal(v); };
 
@@ -96,7 +95,11 @@ export const AddExpenseForm: React.FC<AddExpenseFormProps> = ({
       <View style={s.sectionCard}>
         <Text style={s.sectionLabel}>Description</Text>
         <TextInput
-          style={[s.descInput, descFocused && s.descInputFocused]}
+          style={[
+            s.descInput,
+            descFocused && s.descInputFocused,
+            descHeight ? { minHeight: descHeight } : undefined,
+          ]}
           value={description}
           onChangeText={setDescription}
           onFocus={() => setDescFocused(true)}

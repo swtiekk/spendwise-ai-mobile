@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ─── Tab icon with active indicator dot ──────────────────────────────────────
 function TabIcon({
@@ -14,7 +15,6 @@ function TabIcon({
   focused: boolean;
   isAdd?: boolean;
 }) {
-  // "Add" tab gets a special floating navy pill style
   if (isAdd) {
     return (
       <View style={styles.addIconWrap}>
@@ -36,11 +36,25 @@ function TabIcon({
 }
 
 export default function TabsLayout() {
+  const insets = useSafeAreaInsets();
+
+  // Base tab bar height + system gesture bar inset
+  const tabBarHeight  = Platform.OS === 'ios' ? 50 : 70;
+  const paddingBottom = Platform.OS === 'ios'
+    ? insets.bottom + 4
+    : insets.bottom + 10;
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: [
+          styles.tabBar,
+          {
+            height:        tabBarHeight + insets.bottom,
+            paddingBottom: paddingBottom,
+          },
+        ],
         tabBarActiveTintColor:   Colors.trustNavy,
         tabBarInactiveTintColor: Semantic.textMuted,
         tabBarLabelStyle:        styles.label,
@@ -55,7 +69,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-
       <Tabs.Screen
         name="history"
         options={{
@@ -65,8 +78,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-
-      {/* Centre Add tab — elevated navy pill */}
       <Tabs.Screen
         name="add-expense"
         options={{
@@ -74,7 +85,6 @@ export default function TabsLayout() {
           tabBarIcon: () => <TabIcon name="add" focused={false} isAdd />,
         }}
       />
-
       <Tabs.Screen
         name="insights"
         options={{
@@ -84,7 +94,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-
       <Tabs.Screen
         name="profile"
         options={{
@@ -94,8 +103,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-
-      {/* Hidden screens */}
       <Tabs.Screen name="index"   options={{ href: null }} />
       <Tabs.Screen name="explore" options={{ href: null }} />
     </Tabs>
@@ -108,10 +115,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     borderTopWidth: 1,
     borderTopColor: Semantic.divider,
-    height: Platform.OS === 'ios' ? 80 : 65,
-    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
     paddingTop: 8,
-    // Subtle top shadow so it lifts off the screen
     shadowColor: Colors.trustNavy,
     shadowOffset: { width: 0, height: -3 },
     shadowOpacity: 0.06,
@@ -123,16 +127,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 2,
   },
-
-  // Regular icon container
   iconWrap: {
     alignItems: 'center',
     justifyContent: 'center',
     width: 44,
     height: 28,
   },
-
-  // Teal dot under the active icon
   activeDot: {
     position: 'absolute',
     bottom: -4,
@@ -141,8 +141,6 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: Colors.growthTeal,
   },
-
-  // Centre "Add" floating navy pill
   addIconWrap: {
     width: 52,
     height: 52,
@@ -150,8 +148,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.trustNavy,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Platform.OS === 'ios' ? 10 : 18,
-    // Teal glow shadow
+    marginBottom: Platform.OS === 'ios' ? 8 : 4,
     shadowColor: Colors.trustNavy,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,

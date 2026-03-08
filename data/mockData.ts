@@ -1,9 +1,9 @@
 // ── SpendWise AI Mobile — Mock Data ──────────────────────
 
 export const currentUser = {
-  name: 'Sotie Katrina Golez',
-  email: 'skatrinagolez@gmail.com',
-  password: 'admin123',
+  name: 'User Name',
+  email: 'user@gmail.com',
+  password: 'user123',
   incomeType: 'Monthly Salary',
   incomeCycle: 'Monthly',
   balance: 12450,

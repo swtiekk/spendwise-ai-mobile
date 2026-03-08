@@ -1,24 +1,26 @@
+import { ms } from '../utils/scale';
+
 // ─── Typography Scale ─────────────────────────────────────────────────────────
 export const Typography = {
   sizes: {
-    '2xs': 10,
-    xs:    12,
-    sm:    14,
-    base:  16,
-    lg:    18,
-    xl:    20,
-    '2xl': 24,
-    '3xl': 28,
-    '4xl': 32,
-    '5xl': 40,
+    '2xs': ms(10),
+    xs:    ms(12),
+    sm:    ms(14),
+    base:  ms(16),
+    lg:    ms(18),
+    xl:    ms(20),
+    '2xl': ms(24),
+    '3xl': ms(28),
+    '4xl': ms(32),
+    '5xl': ms(40),
   },
   weights: {
-    light:    '300' as const,
-    normal:   '400' as const,
-    medium:   '500' as const,
-    semibold: '600' as const,
-    bold:     '700' as const,
-    extrabold:'800' as const,
+    light:     '300' as const,
+    normal:    '400' as const,
+    medium:    '500' as const,
+    semibold:  '600' as const,
+    bold:      '700' as const,
+    extrabold: '800' as const,
   },
   lineHeights: {
     tight:   1.2,
