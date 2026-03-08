@@ -6,7 +6,7 @@ import { StyleSheet } from 'react-native';
 export const HistoryStyles = StyleSheet.create({
 
   // =========================================================================
-  // SCREEN
+  // Screen
   // =========================================================================
   screen: { flex: 1, backgroundColor: Semantic.background },
 
