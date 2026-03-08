@@ -6,7 +6,7 @@ import { StyleSheet } from 'react-native';
 export const HistoryStyles = StyleSheet.create({
 
   // =========================================================================
-  // SCREEN
+  // Screens
   // =========================================================================
   screen: { flex: 1, backgroundColor: Semantic.background },
 
@@ -57,7 +57,7 @@ export const HistoryStyles = StyleSheet.create({
     fontWeight: Typography.weights.medium,
     letterSpacing: Typography.letterSpacing.wide,
     textTransform: 'uppercase',
-  },
+  },      
   summaryValue: {
     fontSize: Typography.sizes.lg,
     fontWeight: Typography.weights.extrabold,
@@ -104,6 +104,7 @@ export const HistoryStyles = StyleSheet.create({
   filterTextActive: {
     color: Colors.white,
   },
+
 
   // =========================================================================
   // LIST
