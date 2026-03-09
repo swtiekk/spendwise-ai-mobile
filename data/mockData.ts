@@ -54,14 +54,39 @@ export const mockCategories = [
 
 // ── Insights / ML Data ────────────────────────────────────
 export const mockInsights = {
-  spenderType:     'Balanced',
-  riskLevel:       'moderate',
-  modelAccuracy:   94.2,
+  userId: 'u1',
+  userCluster: 'Balanced Spender',
+  clusterDescription: 'Maintains a healthy balance between spending and saving. Low financial risk.',
+  dailyBurnRate: 420.5,
+  daysRemaining: 14,
+  riskLevel: 'medium',
+  lastUpdated: new Date().toISOString(),
   prediction:      'Funds will likely last until end of cycle with moderate spending.',
   recommendations: [
-    'Reduce shopping expenses by ₱500 this week.',
-    'Your food spending is above average — consider home cooking.',
-    'You are on track with savings — keep it up!',
+    {
+      id: 'r1',
+      type: 'spending-control',
+      title: 'Reduce shopping expenses by ₱500 this week.',
+      description: 'Reducing shopping will help you stay within your budget.',
+      priority: 'medium',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'r2',
+      type: 'spending-control',
+      title: 'Your food spending is above average — consider home cooking.',
+      description: 'Eating out is your highest category right now.',
+      priority: 'high',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'r3',
+      type: 'savings',
+      title: 'You are on track with savings — keep it up!',
+      description: 'Keep saving at this rate to reach your emergency fund goal.',
+      priority: 'low',
+      createdAt: new Date().toISOString(),
+    },
   ],
   weeklyTrend: [
     { day: 'Mon', amount: 275 },
@@ -71,6 +96,18 @@ export const mockInsights = {
     { day: 'Fri', amount: 390 },
     { day: 'Sat', amount: 820 },
     { day: 'Sun', amount: 210 },
+  ],
+  predictions: [
+    {
+      id: 'p1',
+      type: 'sustainability',
+      title: 'Budget sustainability',
+      description: 'Your funds are estimated to last 14 more days.',
+      value: 14,
+      confidence: 94,
+      timestamp: new Date().toISOString(),
+      actionable: true,
+    }
   ],
 };
 

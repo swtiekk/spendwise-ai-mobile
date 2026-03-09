@@ -1,24 +1,27 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 import { Messages } from '../constants/messages';
 import { insightsService } from '../services/insightsService';
-import { MLInsights, SmartPurchaseDecision, SmartPurchaseRequest } from '../types/ml';
+import { useInsightsStore } from '../store/useInsightsStore';
+import { SmartPurchaseDecision, SmartPurchaseRequest } from '../types/ml';
 
 /**
  * Hook for ML insights operations
+ * Refactored to use global store
  */
 export const useInsights = () => {
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [insights, setInsights] = useState<MLInsights | null>(null);
-
-  // Load insights on mount
-  useEffect(() => {
-    loadInsights();
-  }, []);
+  const {
+    insights,
+    isLoading,
+    error,
+    setInsights,
+    setLoading,
+    setError,
+    clearPurchaseDecision,
+  } = useInsightsStore();
 
   const loadInsights = useCallback(async () => {
     try {
-      setIsLoading(true);
+      setLoading(true);
       setError(null);
 
       const data = await insightsService.getInsights();
@@ -27,14 +30,21 @@ export const useInsights = () => {
       const message = err?.message || Messages.errors.unknownError;
       setError(message);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  }, []);
+  }, [setInsights, setLoading, setError]);
+
+  // Load insights on mount if not already loaded
+  useEffect(() => {
+    if (!insights && !isLoading) {
+      loadInsights();
+    }
+  }, [insights, isLoading, loadInsights]);
 
   const getSmartPurchaseDecision = useCallback(
     async (request: SmartPurchaseRequest): Promise<SmartPurchaseDecision> => {
       try {
-        setIsLoading(true);
+        setLoading(true);
         setError(null);
 
         const decision = await insightsService.getSmartPurchaseDecision(request);
@@ -44,15 +54,15 @@ export const useInsights = () => {
         setError(message);
         throw new Error(message);
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     },
-    []
+    [setLoading, setError]
   );
 
   const getRecommendations = useCallback(async () => {
     try {
-      setIsLoading(true);
+      setLoading(true);
       setError(null);
 
       return await insightsService.getRecommendations();
@@ -61,9 +71,9 @@ export const useInsights = () => {
       setError(message);
       throw new Error(message);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  }, []);
+  }, [setLoading, setError]);
 
   const refresh = useCallback(async () => {
     await loadInsights();
@@ -77,5 +87,6 @@ export const useInsights = () => {
     getRecommendations,
     refresh,
     clearError: () => setError(null),
+    clearPurchaseDecision,
   };
 };
