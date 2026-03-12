@@ -1,5 +1,6 @@
 import { Semantic } from '@constants/colors';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, ScrollView, StatusBar, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -38,6 +39,7 @@ function SectionLabel({ title }: { title: string }) {
 }
 
 export default function InsightsScreen() {
+  const router = useRouter();
   const { insights, isLoading, error, refresh } = useInsights();
 
   const clusterLabel = insights?.userCluster || 'Balanced Spender';
@@ -130,7 +132,10 @@ export default function InsightsScreen() {
 
         <FadeSlide delay={110}>
           <SectionLabel title="Your spending health" />
-          <RiskLevelCard riskLevel={riskLevel as any} />
+          <RiskLevelCard 
+            riskLevel={riskLevel as any} 
+            onPress={() => router.push('/spending-health')}
+          />
         </FadeSlide>
 
         <FadeSlide delay={160}>

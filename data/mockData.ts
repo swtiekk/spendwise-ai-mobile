@@ -60,6 +60,14 @@ export const mockInsights = {
   dailyBurnRate: 420.5,
   daysRemaining: 14,
   riskLevel: 'medium',
+  categoryBreakdown: [
+    { id: 'c1', label: 'Food',          value: 565,  color: '#F59E0B', icon: '🍔', percentage: 12 },
+    { id: 'c2', label: 'Transport',     value: 125,  color: '#6366F1', icon: '🚌', percentage: 3 },
+    { id: 'c3', label: 'Shopping',      value: 1760, color: '#EC4899', icon: '🛍️', percentage: 38 },
+    { id: 'c4', label: 'Utilities',     value: 1130, color: '#2DD4BF', icon: '💡', percentage: 24 },
+    { id: 'c5', label: 'Health',        value: 770,  color: '#10B981', icon: '💊', percentage: 16 },
+    { id: 'c6', label: 'Entertainment', value: 248,  color: '#8B5CF6', icon: '🎮', percentage: 5 },
+  ],
   lastUpdated: new Date().toISOString(),
   prediction:      'Funds will likely last until end of cycle with moderate spending.',
   recommendations: [
