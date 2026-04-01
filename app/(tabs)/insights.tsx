@@ -1,19 +1,18 @@
 import { Semantic } from '@constants/colors';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
-import { Animated, ScrollView, StatusBar, Text, View } from 'react-native';
+import { Animated, Pressable, ScrollView, StatusBar, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ErrorMessage } from '../../components/common/ErrorMessage';
 import { BehaviorTrends } from '../../components/insights/BehaviorTrends';
 import { RecommendationList } from '../../components/insights/RecommendationList';
 import { RiskLevelCard } from '../../components/insights/RiskLevelCard';
 import { UserClusterCard } from '../../components/insights/UserClusterCard';
-import { mockInsights } from '../../data/mockData';
 import { seedClusterProfiles } from '../../data/seedData';
 import { useInsights } from '../../hooks/useInsights';
 import { InsightsStyles as s } from '../../styles/insightsStyles';
 
-// ── Staggered fade-slide ──────────────────────────────────────────────────────
 function FadeSlide({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   const opacity    = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(14)).current;
@@ -30,7 +29,6 @@ function FadeSlide({ children, delay = 0 }: { children: React.ReactNode; delay?:
   );
 }
 
-// ── Section label ─────────────────────────────────────────────────────────────
 function SectionLabel({ title }: { title: string }) {
   return (
     <View style={s.sectionHeader}>
@@ -40,50 +38,48 @@ function SectionLabel({ title }: { title: string }) {
   );
 }
 
-// ── Screen ────────────────────────────────────────────────────────────────────
 export default function InsightsScreen() {
-  const { error, refresh } = useInsights();
+  const router = useRouter();
+  const { insights, isLoading, error, refresh } = useInsights();
 
-  const cluster    = seedClusterProfiles[0];
-  const weeklyData = mockInsights.weeklyTrend;
-  const recs       = mockInsights.recommendations;
+  const clusterLabel = insights?.userCluster || 'Balanced Spender';
+  const cluster      = seedClusterProfiles.find(p => p.label === clusterLabel) || seedClusterProfiles[0];
+  
+  const weeklyData = insights?.weeklyTrend || [];
+  const recs       = insights?.recommendations.map(r => r.title) || [];
 
-  const daysRemaining = 14;
-  const riskLevel     = 'medium' as const;
-  const prediction    = mockInsights.prediction;
-  const nextPayDate   = new Date(Date.now() + daysRemaining * 24 * 60 * 60 * 1000)
+  const daysRemaining = insights?.daysRemaining || 0;
+  const riskLevel     = insights?.riskLevel || 'medium';
+  const prediction    = (insights as any)?.prediction || 'Your spending is being analyzed...';
+  
+  const lastUpdatedDate = insights?.lastUpdated ? new Date(insights.lastUpdated) : new Date();
+  const nextPayDate = new Date(lastUpdatedDate.getTime() + daysRemaining * 24 * 60 * 60 * 1000)
     .toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
-
-  if (error) {
-    return (
-      <SafeAreaView style={s.screen}>
-        <View style={s.header}>
-          <View style={s.headerLeft}>
-            <Text style={s.headerTitle}>My Insights</Text>
-          </View>
-        </View>
-        <ErrorMessage message={error} action={{ label: 'Retry', onPress: refresh }} />
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={s.screen}>
       <StatusBar barStyle="dark-content" backgroundColor={Semantic.background} />
 
-      {/* ── Header ── */}
       <FadeSlide delay={0}>
         <View style={s.header}>
           <View style={s.headerLeft}>
-            {/* Removed "Machine Learning" eyebrow — not user-friendly */}
             <Text style={s.headerEyebrow}>YOUR FINANCES</Text>
             <Text style={s.headerTitle}>My Insights</Text>
           </View>
-          <View style={s.headerAiBadge}>
-            <Ionicons name="pulse-outline" size={13} color={Semantic.secondary} />
-            {/* "Live Analysis" softened to "Up to date" */}
-            <Text style={s.headerAiBadgeText}>Up to date</Text>
-          </View>
+          <Pressable 
+            style={({ pressed }) => [s.headerAiBadge, pressed && { opacity: 0.7 }]}
+            onPress={refresh}
+            disabled={isLoading}
+          >
+            <Ionicons 
+              name={isLoading ? "sync-outline" : "pulse-outline"} 
+              size={13} 
+              color={Semantic.secondary} 
+            />
+            <Text style={s.headerAiBadgeText}>
+              {isLoading ? "Refreshing..." : "Up to date"}
+            </Text>
+          </Pressable>
         </View>
       </FadeSlide>
 
@@ -92,11 +88,15 @@ export default function InsightsScreen() {
         contentContainerStyle={s.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── 1. How long will your money last? ── */}
+        {error && (
+          <FadeSlide delay={30}>
+            <ErrorMessage message={error} action={{ label: 'Retry', onPress: refresh }} />
+          </FadeSlide>
+        )}
+
         <FadeSlide delay={60}>
           <SectionLabel title="How long will your money last?" />
           <View style={s.sustainHeroCard}>
-            {/* Removed "Regression Forecast" — replaced with plain status */}
             <View style={s.sustainHeroTopRow}>
               <View style={s.sustainHeroLabelWrap}>
                 <View style={s.sustainHeroLabelDot} />
@@ -108,7 +108,6 @@ export default function InsightsScreen() {
               </View>
             </View>
 
-            {/* Big days number */}
             <View style={s.sustainHeroDaysRow}>
               <Text style={s.sustainHeroDays}>{daysRemaining}</Text>
               <Text style={s.sustainHeroDaysSub}>days of budget left</Text>
@@ -118,7 +117,6 @@ export default function InsightsScreen() {
 
             <View style={s.sustainHeroDivider} />
 
-            {/* Footer — removed "Model: Linear Regression", replaced with useful info */}
             <View style={s.sustainHeroFooterRow}>
               <View style={s.sustainHeroFooterItem}>
                 <Text style={s.sustainHeroFooterLabel}>Next Payday</Text>
@@ -132,13 +130,14 @@ export default function InsightsScreen() {
           </View>
         </FadeSlide>
 
-        {/* ── 2. Your spending health ── */}
         <FadeSlide delay={110}>
           <SectionLabel title="Your spending health" />
-          <RiskLevelCard riskLevel={riskLevel} />
+          <RiskLevelCard 
+            riskLevel={riskLevel as any} 
+            onPress={() => router.push('/spending-health')}
+          />
         </FadeSlide>
 
-        {/* ── 3. Your money personality ── */}
         <FadeSlide delay={160}>
           <SectionLabel title="Your money personality" />
           <UserClusterCard
@@ -149,13 +148,11 @@ export default function InsightsScreen() {
           />
         </FadeSlide>
 
-        {/* ── 4. Spending this week ── */}
         <FadeSlide delay={210}>
           <SectionLabel title="Spending this week" />
           <BehaviorTrends weeklyTrend={weeklyData} />
         </FadeSlide>
 
-        {/* ── 5. Tips for you ── */}
         <FadeSlide delay={260}>
           <SectionLabel title="Tips for you" />
           <RecommendationList recommendations={recs} />

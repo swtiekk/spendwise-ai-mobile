@@ -54,14 +54,47 @@ export const mockCategories = [
 
 // ── Insights / ML Data ────────────────────────────────────
 export const mockInsights = {
-  spenderType:     'Balanced',
-  riskLevel:       'moderate',
-  modelAccuracy:   94.2,
+  userId: 'u1',
+  userCluster: 'Balanced Spender',
+  clusterDescription: 'Maintains a healthy balance between spending and saving. Low financial risk.',
+  dailyBurnRate: 420.5,
+  daysRemaining: 14,
+  riskLevel: 'medium',
+  categoryBreakdown: [
+    { id: 'c1', label: 'Food',          value: 565,  color: '#F59E0B', icon: '🍔', percentage: 12 },
+    { id: 'c2', label: 'Transport',     value: 125,  color: '#6366F1', icon: '🚌', percentage: 3 },
+    { id: 'c3', label: 'Shopping',      value: 1760, color: '#EC4899', icon: '🛍️', percentage: 38 },
+    { id: 'c4', label: 'Utilities',     value: 1130, color: '#2DD4BF', icon: '💡', percentage: 24 },
+    { id: 'c5', label: 'Health',        value: 770,  color: '#10B981', icon: '💊', percentage: 16 },
+    { id: 'c6', label: 'Entertainment', value: 248,  color: '#8B5CF6', icon: '🎮', percentage: 5 },
+  ],
+  lastUpdated: new Date().toISOString(),
   prediction:      'Funds will likely last until end of cycle with moderate spending.',
   recommendations: [
-    'Reduce shopping expenses by ₱500 this week.',
-    'Your food spending is above average — consider home cooking.',
-    'You are on track with savings — keep it up!',
+    {
+      id: 'r1',
+      type: 'spending-control',
+      title: 'Reduce shopping expenses by ₱500 this week.',
+      description: 'Reducing shopping will help you stay within your budget.',
+      priority: 'medium',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'r2',
+      type: 'spending-control',
+      title: 'Your food spending is above average — consider home cooking.',
+      description: 'Eating out is your highest category right now.',
+      priority: 'high',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'r3',
+      type: 'savings',
+      title: 'You are on track with savings — keep it up!',
+      description: 'Keep saving at this rate to reach your emergency fund goal.',
+      priority: 'low',
+      createdAt: new Date().toISOString(),
+    },
   ],
   weeklyTrend: [
     { day: 'Mon', amount: 275 },
@@ -71,6 +104,18 @@ export const mockInsights = {
     { day: 'Fri', amount: 390 },
     { day: 'Sat', amount: 820 },
     { day: 'Sun', amount: 210 },
+  ],
+  predictions: [
+    {
+      id: 'p1',
+      type: 'sustainability',
+      title: 'Budget sustainability',
+      description: 'Your funds are estimated to last 14 more days.',
+      value: 14,
+      confidence: 94,
+      timestamp: new Date().toISOString(),
+      actionable: true,
+    }
   ],
 };
 

@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { InsightsStyles as s } from '../../styles/insightsStyles';
 
 export type RiskLevel = 'low' | 'medium' | 'high';
 
 interface RiskLevelCardProps {
   riskLevel: RiskLevel;
+  onPress?: () => void;
 }
 
 const RISK_CONFIG = {
@@ -36,11 +37,19 @@ const RISK_CONFIG = {
   },
 };
 
-export const RiskLevelCard: React.FC<RiskLevelCardProps> = ({ riskLevel }) => {
+export const RiskLevelCard: React.FC<RiskLevelCardProps> = ({ riskLevel, onPress }) => {
   const cfg = RISK_CONFIG[riskLevel];
 
   return (
-    <View style={[s.riskCard, { backgroundColor: cfg.bg }]}>
+    <Pressable 
+      style={({ pressed }) => [
+        s.riskCard, 
+        { backgroundColor: cfg.bg },
+        pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+      ]}
+      onPress={onPress}
+      disabled={!onPress}
+    >
       {/* Top row — status label + icon */}
       <View style={s.riskCardTopRow}>
         <Text style={[s.riskCardLabel, { color: 'rgba(255,255,255,0.8)' }]}>
@@ -68,6 +77,15 @@ export const RiskLevelCard: React.FC<RiskLevelCardProps> = ({ riskLevel }) => {
         <Text style={[s.riskMeterLabelText, { color: 'rgba(255,255,255,0.6)' }]}>Caution</Text>
         <Text style={[s.riskMeterLabelText, { color: 'rgba(255,255,255,0.6)' }]}>Critical</Text>
       </View>
-    </View>
+
+      {onPress && (
+        <View style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '700', marginRight: 4 }}>
+            VIEW FULL BREAKDOWN
+          </Text>
+          <Ionicons name="arrow-forward" size={14} color="rgba(255,255,255,0.7)" />
+        </View>
+      )}
+    </Pressable>
   );
 };

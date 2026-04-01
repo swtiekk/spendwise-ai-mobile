@@ -2,8 +2,17 @@
  * Machine Learning and AI related types
  */
 
-export type UserCluster = 'Frugal' | 'Balanced' | 'Impulsive' | 'High-Risk';
-export type RiskLevel = 'safe' | 'caution' | 'danger';
+export type UserCluster = 'Balanced Spender' | 'Impulsive Spender' | 'Conservative Saver' | 'High-Risk Spender';
+export type RiskLevel = 'low' | 'medium' | 'high';
+
+export interface CategorySpending {
+  id: string;
+  label: string;
+  value: number;
+  color: string;
+  icon: string;
+  percentage?: number;
+}
 
 export interface MLInsights {
   userId: string;
@@ -12,8 +21,11 @@ export interface MLInsights {
   dailyBurnRate: number;
   daysRemaining: number;
   riskLevel: RiskLevel;
+  prediction?: string;
   predictions: Prediction[];
   recommendations: Recommendation[];
+  weeklyTrend: { day: string; amount: number }[];
+  categoryBreakdown?: CategorySpending[];
   lastUpdated: string;
 }
 
