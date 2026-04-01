@@ -426,4 +426,46 @@ export const DashboardStyles = StyleSheet.create({
   // =========================================================================
   skeletonWrap:  { flex: 1, padding: Spacing.lg, gap: Spacing.lg },
   skeletonBlock: { borderRadius: BorderRadius.xl, backgroundColor: Semantic.border },
+
+  // =========================================================================
+  // SMART PURCHASE BUTTON
+  // =========================================================================
+  smartPurchaseBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    marginVertical: Spacing.md,
+    borderRadius: BorderRadius.xl,
+    backgroundColor: Semantic.primary,
+    ...Shadow.sm,
+  },
+  smartPurchaseLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  smartPurchaseIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  smartPurchaseTitle: {
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.semibold,
+    color: Colors.white,
+    marginBottom: Spacing.xs,
+  },
+  smartPurchaseSubtitle: {
+    fontSize: Typography.sizes.sm,
+    color: 'rgba(255, 255, 255, 0.85)',
+  },
+  smartPurchaseArrow: {
+    marginLeft: Spacing.md,
+  },
 });
