@@ -1,7 +1,7 @@
 import { Semantic } from '@constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
-import { Modal, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '../../components/common/EmptyState';
 import { ErrorMessage } from '../../components/common/ErrorMessage';
@@ -53,20 +53,41 @@ export default function HistoryScreen() {
   const [tempSort, setTempSort]             = useState<SortOption>('newest');
   const [showSortModal, setShowSortModal]   = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  const [deletedIds, setDeletedIds]         = useState<Set<string | number>>(new Set());
+
+  const handleDelete = (expense: Expense) => {
+    Alert.alert(
+      'Delete Expense',
+      `Are you sure you want to delete "${expense.title}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            setDeletedIds(prev => new Set(prev).add(expense.id));
+            setSelectedExpense(null);
+          },
+        },
+      ]
+    );
+  };
 
   const filtered = useMemo(() => {
     const list = activeFilter === 'All'
       ? mockExpenses
       : mockExpenses.filter(e => e.category.toLowerCase() === activeFilter.toLowerCase());
 
-    return [...list].sort((a, b) => {
-      if (activeSort === 'newest')  return new Date(b.date).getTime() - new Date(a.date).getTime();
-      if (activeSort === 'oldest')  return new Date(a.date).getTime() - new Date(b.date).getTime();
-      if (activeSort === 'highest') return b.amount - a.amount;
-      if (activeSort === 'lowest')  return a.amount - b.amount;
-      return 0;
-    });
-  }, [activeFilter, activeSort]);
+    return [...list]
+      .filter(e => !deletedIds.has(e.id))
+      .sort((a, b) => {
+        if (activeSort === 'newest')  return new Date(b.date).getTime() - new Date(a.date).getTime();
+        if (activeSort === 'oldest')  return new Date(a.date).getTime() - new Date(b.date).getTime();
+        if (activeSort === 'highest') return b.amount - a.amount;
+        if (activeSort === 'lowest')  return a.amount - b.amount;
+        return 0;
+      });
+  }, [activeFilter, activeSort, deletedIds]);
 
   const grouped    = useMemo(() => groupByDate(filtered), [filtered]);
   const totalSpent = useMemo(() => filtered.reduce((sum, e) => sum + e.amount, 0), [filtered]);
@@ -141,9 +162,11 @@ export default function HistoryScreen() {
             <View key={label} style={s.dateGroup}>
               <Text style={s.dateGroupLabel}>{label}</Text>
               {data.map(expense => (
-                <TouchableOpacity key={expense.id} onPress={() => setSelectedExpense(expense)} activeOpacity={0.7}>
-                  <ExpenseCard {...expense} />
-                </TouchableOpacity>
+                <ExpenseCard
+                  key={expense.id}
+                  {...expense}
+                  onPress={() => setSelectedExpense(expense)}
+                />
               ))}
             </View>
           ))}
@@ -209,6 +232,16 @@ export default function HistoryScreen() {
                 ))}
                 <View style={m.divider} />
 
+                {/* Delete Button */}
+                <TouchableOpacity
+                  style={m.deleteBtn}
+                  onPress={() => handleDelete(selectedExpense)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="trash-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+                  <Text style={m.deleteText}>Delete Expense</Text>
+                </TouchableOpacity>
+
                 <TouchableOpacity style={m.closeBtn} onPress={() => setSelectedExpense(null)} activeOpacity={0.8}>
                   <Text style={m.closeText}>Close</Text>
                 </TouchableOpacity>
@@ -244,6 +277,8 @@ const m = StyleSheet.create({
   detailRow:        { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 },
   detailLabel:      { fontSize: 14, color: '#999', fontWeight: '500' },
   detailValue:      { fontSize: 14, color: '#1a1a2e', fontWeight: '600', maxWidth: '60%', textAlign: 'right' },
+  deleteBtn:        { flexDirection: 'row', backgroundColor: '#e53935', borderRadius: 14, paddingVertical: 15, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  deleteText:       { color: '#fff', fontSize: 16, fontWeight: '700' },
   closeBtn:         { backgroundColor: '#1a1a2e', borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 8 },
   closeText:        { color: '#fff', fontSize: 16, fontWeight: '700' },
 });
