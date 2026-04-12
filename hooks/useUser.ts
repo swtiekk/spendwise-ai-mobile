@@ -1,12 +1,9 @@
-import { currentUser, mockSavingsGoals } from '@/data/mockData';
 import { useCallback, useEffect, useState } from 'react';
+import api from '../services/api';
 import { useAuthStore } from '../store/useAuthStore';
 import { useUserStore } from '../store/useUserStore';
-import { SavingsGoal, UserProfile } from '../types/user';
+import { UserProfile } from '../types/user';
 
-/**
- * Hook for user profile operations
- */
 export const useUser = () => {
   const authUser = useAuthStore((s) => s.user);
   const { profile, savingsGoals, setProfile, setSavingsGoals, updateProfile } = useUserStore();
@@ -22,16 +19,17 @@ export const useUser = () => {
       setIsLoading(true);
       setError(null);
 
-      // Mock: build profile from authUser + mockData
-      const mockProfile: UserProfile = {
-        id:             authUser?.id ?? 'u1',
-        email:          authUser?.email ?? currentUser.email,
-        name:           authUser?.name  ?? currentUser.name,
-        incomeType:     authUser?.incomeType  ?? 'salary',
-        incomeCycle:    authUser?.incomeCycle ?? 'monthly',
-        incomeAmount:   authUser?.incomeAmount ?? currentUser.income,
-        nextIncomeDate: authUser?.nextIncomeDate ?? '',
-        savingsGoal:    currentUser.savingsGoal,
+      const res = await api.get('/profile/');
+
+      const fetchedProfile: UserProfile = {
+        id:             authUser?.id    ?? '',
+        email:          authUser?.email ?? '',
+        name:           authUser?.name  ?? '',
+        incomeType:     res.data.income_type      ?? 'salary',
+        incomeCycle:    res.data.income_cycle     ?? 'monthly',
+        incomeAmount:   res.data.income_amount    ?? 0,
+        nextIncomeDate: res.data.next_income_date ?? '',
+        savingsGoal:    res.data.savings_goal     ?? 0,
         preferences: {
           notificationsEnabled: true,
           darkMode:             false,
@@ -39,23 +37,12 @@ export const useUser = () => {
           language:             'en',
           budgetAlertThreshold: 80,
         },
-        createdAt: authUser?.createdAt ?? '',
-        updatedAt: authUser?.updatedAt ?? '',
+        createdAt: '',
+        updatedAt: '',
       };
 
-      const goals: SavingsGoal[] = mockSavingsGoals.map((g) => ({
-        id:            g.id,
-        userId:        mockProfile.id,
-        name:          g.title,
-        targetAmount:  g.target,
-        currentAmount: g.current,
-        deadline:      '',
-        createdAt:     '',
-        updatedAt:     '',
-      }));
-
-      setProfile(mockProfile);
-      setSavingsGoals(goals);
+      setProfile(fetchedProfile);
+      setSavingsGoals([]);
     } catch (err: any) {
       setError(err?.message ?? 'Failed to load profile');
     } finally {
@@ -67,7 +54,12 @@ export const useUser = () => {
     async (data: Partial<UserProfile>) => {
       try {
         setIsLoading(true);
-        await new Promise((r) => setTimeout(r, 500));
+        setError(null);
+        await api.patch('/profile/', {
+          ...(data.incomeAmount !== undefined && { income_amount: data.incomeAmount }),
+          ...(data.incomeType   !== undefined && { income_type:   data.incomeType }),
+          ...(data.incomeCycle  !== undefined && { income_cycle:  data.incomeCycle }),
+        });
         updateProfile(data);
       } catch (err: any) {
         setError(err?.message ?? 'Failed to update profile');

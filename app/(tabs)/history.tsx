@@ -1,34 +1,69 @@
 import { Semantic } from '@constants/colors';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Modal, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '../../components/common/EmptyState';
 import { ErrorMessage } from '../../components/common/ErrorMessage';
 import { ExpenseCard } from '../../components/expense/ExpenseCard';
-import { mockExpenses } from '../../data/mockData';
 import { useExpenses } from '../../hooks/useExpenses';
 import { HistoryStyles as s } from '../../styles/historyStyles';
 
-type Expense = typeof mockExpenses[0];
-type Filter = 'All' | 'Food' | 'Transport' | 'Shopping' | 'Health' | 'Utilities' | 'Entertainment' | 'Savings';
+type Filter = 'All' | 'Food' | 'Transport' | 'Shopping' | 'Health' | 'Utilities' | 'Entertainment' | 'Education' | 'Other';
 type SortOption = 'newest' | 'oldest' | 'highest' | 'lowest';
 
-const FILTERS: Filter[] = ['All', 'Food', 'Transport', 'Shopping', 'Health', 'Utilities', 'Entertainment', 'Savings'];
+const FILTERS: Filter[] = ['All', 'Food', 'Transport', 'Shopping', 'Health', 'Utilities', 'Entertainment', 'Education', 'Other'];
 const SORT_OPTIONS = [
-  { label: 'Newest First',  value: 'newest'  },
-  { label: 'Oldest First',  value: 'oldest'  },
-  { label: 'Highest Amount',value: 'highest' },
-  { label: 'Lowest Amount', value: 'lowest'  },
+  { label: 'Newest First',   value: 'newest'  },
+  { label: 'Oldest First',   value: 'oldest'  },
+  { label: 'Highest Amount', value: 'highest' },
+  { label: 'Lowest Amount',  value: 'lowest'  },
 ] as const;
 
-// Group expenses by date label
-function groupByDate(expenses: Expense[]) {
+// ── Category display helpers ──────────────────────────────────────────────────
+const CATEGORY_CONFIG: Record<string, { label: string; icon: string; color: string }> = {
+  food:          { label: 'Food',          icon: 'fast-food-outline',          color: '#F59E0B' },
+  transport:     { label: 'Transport',     icon: 'car-outline',                 color: '#6366F1' },
+  entertainment: { label: 'Entertainment', icon: 'game-controller-outline',     color: '#8B5CF6' },
+  utilities:     { label: 'Utilities',     icon: 'flash-outline',               color: '#EF4444' },
+  shopping:      { label: 'Shopping',      icon: 'bag-outline',                 color: '#EC4899' },
+  health:        { label: 'Health',        icon: 'medical-outline',             color: '#22C55E' },
+  education:     { label: 'Education',     icon: 'book-outline',                color: '#3B82F6' },
+  other:         { label: 'Other',         icon: 'ellipsis-horizontal-outline', color: '#9CA3AF' },
+};
+
+function getCategoryConfig(category: string | null | undefined) {
+  if (!category) return CATEGORY_CONFIG.other;
+  return CATEGORY_CONFIG[category.toLowerCase()] ?? CATEGORY_CONFIG.other;
+}
+
+// ── Normalize backend Expense to display format ───────────────────────────────
+// Django returns category as a nested object: { id, key, name, ... }
+function normalizeExpense(exp: any) {
+  const categoryKey = exp.category?.key ?? exp.category ?? 'other';
+  const cfg = getCategoryConfig(categoryKey);
+  return {
+    id:          String(exp.id),
+    title:       exp.description || cfg.label,
+    amount:      Number(exp.amount) || 0,
+    category:    cfg.label,
+    categoryKey: categoryKey,
+    date:        exp.timestamp || exp.created_at || new Date().toISOString(),
+    icon:        cfg.icon,
+    color:       cfg.color,
+  };
+}
+
+type NormalizedExpense = ReturnType<typeof normalizeExpense>;
+
+// ── Group by date ─────────────────────────────────────────────────────────────
+function groupByDate(expenses: NormalizedExpense[]) {
   const today     = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
 
-  const groups: Record<string, Expense[]> = {};
+  const groups: Record<string, NormalizedExpense[]> = {};
   expenses.forEach(exp => {
     const d = new Date(exp.date);
     const label =
@@ -46,18 +81,32 @@ const formatCurrency = (n: number) => '₱' + n.toLocaleString('en-PH');
 const formatDate = (d: string) =>
   new Date(d).toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
+// ── Screen ────────────────────────────────────────────────────────────────────
 export default function HistoryScreen() {
-  const { error, refresh } = useExpenses();
-  const [activeFilter, setActiveFilter]     = useState<Filter>('All');
-  const [activeSort, setActiveSort]         = useState<SortOption>('newest');
-  const [tempSort, setTempSort]             = useState<SortOption>('newest');
-  const [showSortModal, setShowSortModal]   = useState(false);
-  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  const { expenses, error, refresh } = useExpenses();
+
+  const [activeFilter,    setActiveFilter]    = useState<Filter>('All');
+  const [activeSort,      setActiveSort]      = useState<SortOption>('newest');
+  const [tempSort,        setTempSort]        = useState<SortOption>('newest');
+  const [showSortModal,   setShowSortModal]   = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState<NormalizedExpense | null>(null);
+
+  // ── Reload every time screen is focused ──────────────────────────────────
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [])
+  );
+
+  const normalized = useMemo(() =>
+    (expenses ?? []).map(normalizeExpense),
+    [expenses]
+  );
 
   const filtered = useMemo(() => {
     const list = activeFilter === 'All'
-      ? mockExpenses
-      : mockExpenses.filter(e => e.category.toLowerCase() === activeFilter.toLowerCase());
+      ? normalized
+      : normalized.filter(e => e.category.toLowerCase() === activeFilter.toLowerCase());
 
     return [...list].sort((a, b) => {
       if (activeSort === 'newest')  return new Date(b.date).getTime() - new Date(a.date).getTime();
@@ -66,7 +115,7 @@ export default function HistoryScreen() {
       if (activeSort === 'lowest')  return a.amount - b.amount;
       return 0;
     });
-  }, [activeFilter, activeSort]);
+  }, [normalized, activeFilter, activeSort]);
 
   const grouped    = useMemo(() => groupByDate(filtered), [filtered]);
   const totalSpent = useMemo(() => filtered.reduce((sum, e) => sum + e.amount, 0), [filtered]);
@@ -76,7 +125,7 @@ export default function HistoryScreen() {
     <SafeAreaView style={s.screen}>
       <StatusBar barStyle="dark-content" backgroundColor={Semantic.background} />
 
-      {/* Header */}
+      {/* ── Header ── */}
       <View style={s.header}>
         <View style={s.headerLeft}>
           <Text style={s.headerEyebrow}>Overview</Text>
@@ -91,7 +140,7 @@ export default function HistoryScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Summary */}
+      {/* ── Summary strip ── */}
       <View style={s.summaryStrip}>
         {[
           { label: 'Transactions', value: String(filtered.length), style: s.summaryValue },
@@ -108,7 +157,7 @@ export default function HistoryScreen() {
         ))}
       </View>
 
-      {/* Filter bar */}
+      {/* ── Filter bar ── */}
       <View style={s.filterWrap}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={s.filterContent}>
@@ -126,7 +175,7 @@ export default function HistoryScreen() {
         </ScrollView>
       </View>
 
-      {/* Expense list */}
+      {/* ── Expense list ── */}
       {error ? (
         <ErrorMessage message={error} action={{ label: 'Retry', onPress: refresh }} />
       ) : filtered.length === 0 ? (
@@ -141,8 +190,20 @@ export default function HistoryScreen() {
             <View key={label} style={s.dateGroup}>
               <Text style={s.dateGroupLabel}>{label}</Text>
               {data.map(expense => (
-                <TouchableOpacity key={expense.id} onPress={() => setSelectedExpense(expense)} activeOpacity={0.7}>
-                  <ExpenseCard {...expense} />
+                <TouchableOpacity
+                  key={expense.id}
+                  onPress={() => setSelectedExpense(expense)}
+                  activeOpacity={0.7}
+                >
+                  <ExpenseCard
+                    id={expense.id}
+                    title={expense.title}
+                    amount={expense.amount}
+                    category={expense.category}
+                    date={expense.date}
+                    icon={expense.icon}
+                    color={expense.color}
+                  />
                 </TouchableOpacity>
               ))}
             </View>
@@ -156,7 +217,6 @@ export default function HistoryScreen() {
           <TouchableOpacity activeOpacity={1} style={m.sheet}>
             <View style={m.handle} />
             <Text style={m.sheetTitle}>Sort By</Text>
-
             {SORT_OPTIONS.map(opt => (
               <TouchableOpacity
                 key={opt.value}
@@ -168,7 +228,6 @@ export default function HistoryScreen() {
                 {tempSort === opt.value && <Ionicons name="checkmark" size={18} color="#00b4a6" />}
               </TouchableOpacity>
             ))}
-
             <TouchableOpacity
               style={m.applyBtn}
               onPress={() => { setActiveSort(tempSort); setShowSortModal(false); }}
@@ -191,11 +250,10 @@ export default function HistoryScreen() {
             {selectedExpense && (
               <>
                 <View style={[m.detailIconWrap, { backgroundColor: selectedExpense.color + '22' }]}>
-                  <Text style={{ fontSize: 36 }}>{selectedExpense.icon}</Text>
+                  <Ionicons name={selectedExpense.icon as any} size={36} color={selectedExpense.color} />
                 </View>
                 <Text style={m.detailTitle}>{selectedExpense.title}</Text>
                 <Text style={m.detailAmount}>-{formatCurrency(selectedExpense.amount)}</Text>
-
                 <View style={m.divider} />
                 {[
                   { label: 'Category',       value: selectedExpense.category },
@@ -208,7 +266,6 @@ export default function HistoryScreen() {
                   </View>
                 ))}
                 <View style={m.divider} />
-
                 <TouchableOpacity style={m.closeBtn} onPress={() => setSelectedExpense(null)} activeOpacity={0.8}>
                   <Text style={m.closeText}>Close</Text>
                 </TouchableOpacity>
@@ -217,12 +274,10 @@ export default function HistoryScreen() {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
-
     </SafeAreaView>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const m = StyleSheet.create({
   iconBtn:          { width: 38, height: 38, borderRadius: 11, backgroundColor: '#f5f5f5', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#e0e0e0' },
   overlay:          { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },

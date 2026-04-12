@@ -1,86 +1,75 @@
-import { mockExpenses } from '@/data/mockData';
 import { PaginatedResponse } from '../types/api';
 import {
-    CreateExpenseRequest,
-    CreateIncomeRequest,
-    Expense,
-    ExpenseStats,
-    Income,
+  CreateExpenseRequest,
+  CreateIncomeRequest,
+  Expense,
+  ExpenseStats,
+  Income,
 } from '../types/expense';
-
-// Local mutable copy for add/update/delete
-let expenses: Expense[] = [...mockExpenses] as unknown as Expense[];
+import api from './api';
 
 export const expenseService = {
 
   createExpense: async (data: CreateExpenseRequest): Promise<Expense> => {
-    await new Promise((r) => setTimeout(r, 600));
-    const newExpense: Expense = {
-      id: `e${Date.now()}`,
-      ...data,
-    } as unknown as Expense;
-    expenses = [newExpense, ...expenses];
-    return newExpense;
+    const res = await api.post('/expenses/', {
+      amount:       data.amount,
+      category_key: data.category,
+      description:  data.description,
+      timestamp:    data.timestamp,
+    });
+    return res.data;
   },
 
   getExpenses: async (page = 1, pageSize = 20): Promise<PaginatedResponse<Expense>> => {
-    await new Promise((r) => setTimeout(r, 400));
-    const start = (page - 1) * pageSize;
-    const sliced = expenses.slice(start, start + pageSize);
-    const totalPages = Math.ceil(expenses.length / pageSize);
+    const res = await api.get(`/expenses/?page=${page}&page_size=${pageSize}`);
+    const items = Array.isArray(res.data) ? res.data : res.data.results ?? [];
     return {
-      items:           sliced,               // ✅ renamed from `data` → `items` (matches PaginatedResponse)
-      total:           expenses.length,
+      items,
+      total:           items.length,
       page,
       pageSize,
-      hasNextPage:     page < totalPages,    // ✅ added: required by PaginatedResponse
-      hasPreviousPage: page > 1,             // ✅ added: required by PaginatedResponse
-      // ❌ removed: totalPages — not on PaginatedResponse type
+      hasNextPage:     false,
+      hasPreviousPage: page > 1,
     };
   },
 
   getExpense: async (id: string): Promise<Expense> => {
-    await new Promise((r) => setTimeout(r, 300));
-    const found = expenses.find((e) => e.id === id);
-    if (!found) throw new Error(`Expense ${id} not found`);
-    return found;
+    const res = await api.get(`/expenses/${id}/`);
+    return res.data;
   },
 
   updateExpense: async (id: string, data: Partial<CreateExpenseRequest>): Promise<Expense> => {
-    await new Promise((r) => setTimeout(r, 500));
-    expenses = expenses.map((e) => (e.id === id ? { ...e, ...data } : e));
-    return expenses.find((e) => e.id === id)!;
+    const res = await api.patch(`/expenses/${id}/`, {
+      ...(data.amount      && { amount:       data.amount }),
+      ...(data.category    && { category_key: data.category }),
+      ...(data.description && { description:  data.description }),
+    });
+    return res.data;
   },
 
   deleteExpense: async (id: string): Promise<void> => {
-    await new Promise((r) => setTimeout(r, 400));
-    expenses = expenses.filter((e) => e.id !== id);
+    await api.delete(`/expenses/${id}/`);
   },
 
   recordIncome: async (data: CreateIncomeRequest): Promise<Income> => {
-    await new Promise((r) => setTimeout(r, 500));
-    return { id: `i${Date.now()}`, ...data } as unknown as Income;
+    const res = await api.post('/income/', data);
+    return res.data;
   },
 
   getExpenseStats: async (): Promise<ExpenseStats> => {
-    await new Promise((r) => setTimeout(r, 400));
-    const total = expenses.reduce((sum, e) => sum + (e as any).amount, 0);
+    const res = await api.get('/expenses/stats/');
     return {
-      totalExpenses:     total,              // ✅ renamed from totalSpent → totalExpenses (matches ExpenseStats)
-      totalIncome:       18000,
-      balance:           18000 - total,
-      averageDailySpend: total / 30,         // ✅ added: required by ExpenseStats
-      daysRemaining:     14,                 // ✅ added: required by ExpenseStats
-      categoryBreakdown: {} as any,          // ✅ added: required by ExpenseStats
-      // ❌ removed: expenseCount — not on ExpenseStats type
+      totalExpenses:     res.data.total_expenses,
+      totalIncome:       res.data.total_income,
+      balance:           res.data.balance,
+      averageDailySpend: res.data.average_daily_spend,
+      daysRemaining:     res.data.days_remaining,
+      categoryBreakdown: res.data.category_breakdown,
     };
   },
 
   getExpensesByDateRange: async (startDate: string, endDate: string): Promise<Expense[]> => {
-    await new Promise((r) => setTimeout(r, 400));
-    return expenses.filter((e) => {
-      const d = (e as any).date;
-      return d >= startDate && d <= endDate;
-    });
+    const res = await api.get(`/expenses/?start_date=${startDate}&end_date=${endDate}`);
+    return Array.isArray(res.data) ? res.data : res.data.results ?? [];
   },
 };

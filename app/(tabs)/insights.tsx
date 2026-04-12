@@ -1,7 +1,7 @@
 import { Semantic } from '@constants/colors';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useRef } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { Animated, Pressable, ScrollView, StatusBar, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ErrorMessage } from '../../components/common/ErrorMessage';
@@ -42,16 +42,25 @@ export default function InsightsScreen() {
   const router = useRouter();
   const { insights, isLoading, error, refresh } = useInsights();
 
+  // ── Reload every time screen is focused ──────────────────────────────────
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [])
+  );
+
   const clusterLabel = insights?.userCluster || 'Balanced Spender';
   const cluster      = seedClusterProfiles.find(p => p.label === clusterLabel) || seedClusterProfiles[0];
-  
+
   const weeklyData = insights?.weeklyTrend || [];
   const recs       = insights?.recommendations.map(r => r.title) || [];
 
   const daysRemaining = insights?.daysRemaining || 0;
-  const riskLevel     = insights?.riskLevel || 'medium';
-  const prediction    = (insights as any)?.prediction || 'Your spending is being analyzed...';
-  
+  const riskLevel = (['low', 'medium', 'high'].includes(insights?.riskLevel ?? '')
+    ? insights?.riskLevel
+    : 'medium') as 'low' | 'medium' | 'high';
+  const prediction = (insights as any)?.prediction || 'Your spending is being analyzed...';
+
   const lastUpdatedDate = insights?.lastUpdated ? new Date(insights.lastUpdated) : new Date();
   const nextPayDate = new Date(lastUpdatedDate.getTime() + daysRemaining * 24 * 60 * 60 * 1000)
     .toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -66,15 +75,15 @@ export default function InsightsScreen() {
             <Text style={s.headerEyebrow}>YOUR FINANCES</Text>
             <Text style={s.headerTitle}>My Insights</Text>
           </View>
-          <Pressable 
+          <Pressable
             style={({ pressed }) => [s.headerAiBadge, pressed && { opacity: 0.7 }]}
             onPress={refresh}
             disabled={isLoading}
           >
-            <Ionicons 
-              name={isLoading ? "sync-outline" : "pulse-outline"} 
-              size={13} 
-              color={Semantic.secondary} 
+            <Ionicons
+              name={isLoading ? "sync-outline" : "pulse-outline"}
+              size={13}
+              color={Semantic.secondary}
             />
             <Text style={s.headerAiBadgeText}>
               {isLoading ? "Refreshing..." : "Up to date"}
@@ -132,8 +141,8 @@ export default function InsightsScreen() {
 
         <FadeSlide delay={110}>
           <SectionLabel title="Your spending health" />
-          <RiskLevelCard 
-            riskLevel={riskLevel as any} 
+          <RiskLevelCard
+            riskLevel={riskLevel}
             onPress={() => router.push('/spending-health')}
           />
         </FadeSlide>

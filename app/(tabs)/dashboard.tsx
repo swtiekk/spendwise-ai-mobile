@@ -2,7 +2,7 @@ import { Colors, Semantic } from '@constants/colors';
 import { Spacing } from '@constants/spacing';
 import { Typography } from '@constants/typography';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -25,11 +25,9 @@ import { useDashboard } from '../../hooks/useDashboard';
 import { useNotifications } from '../../hooks/useNotifications';
 import { DashboardStyles as s } from '../../styles/dashboardStyles';
 
-// ── Date range filter options ─────────────────────────────────────────────────
 type DateRange = 'Today' | 'This Week' | 'This Month';
 const DATE_RANGES: DateRange[] = ['Today', 'This Week', 'This Month'];
 
-// ── Quick expense categories ──────────────────────────────────────────────────
 const QUICK_CATEGORIES = [
   { key: 'food',          label: 'Food',      icon: 'fast-food-outline',      color: '#F59E0B', bg: '#FFFBEB' },
   { key: 'transport',     label: 'Transport', icon: 'car-outline',             color: '#6366F1', bg: '#EEF2FF' },
@@ -38,7 +36,6 @@ const QUICK_CATEGORIES = [
   { key: 'health',        label: 'Health',    icon: 'medical-outline',         color: '#22C55E', bg: '#F0FDF4' },
 ] as const;
 
-// ── Time-based greeting ───────────────────────────────────────────────────────
 function getGreeting(): string {
   const hour = new Date().getHours();
   if (hour < 12) return 'Good morning';
@@ -46,7 +43,6 @@ function getGreeting(): string {
   return 'Good evening';
 }
 
-// ── Staggered fade-slide ──────────────────────────────────────────────────────
 function FadeSlide({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   const opacity    = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(16)).current;
@@ -63,9 +59,8 @@ function FadeSlide({ children, delay = 0 }: { children: React.ReactNode; delay?:
   );
 }
 
-// ── Section label ─────────────────────────────────────────────────────────────
-function SectionLabel({ title, action, onAction }: { 
-  title: string; 
+function SectionLabel({ title, action, onAction }: {
+  title: string;
   action?: string;
   onAction?: () => void;
 }) {
@@ -84,7 +79,6 @@ function SectionLabel({ title, action, onAction }: {
   );
 }
 
-// ── Loading skeleton ──────────────────────────────────────────────────────────
 function Skeleton() {
   const opacity = useRef(new Animated.Value(0.4)).current;
   useEffect(() => {
@@ -104,24 +98,15 @@ function Skeleton() {
   );
 }
 
-// ── Quick shortcut item with bounce animation ─────────────────────────────────
-function QuickItem({
-  item,
-  onPress,
-}: {
-  item: typeof QUICK_CATEGORIES[number];
-  onPress: () => void;
-}) {
+function QuickItem({ item, onPress }: { item: typeof QUICK_CATEGORIES[number]; onPress: () => void }) {
   const scale = useRef(new Animated.Value(1)).current;
-
   const handlePress = () => {
     Animated.sequence([
-      Animated.timing(scale, { toValue: 0.88, duration: 80,  useNativeDriver: true }),
-      Animated.spring(scale,  { toValue: 1,    friction: 4,   useNativeDriver: true }),
+      Animated.timing(scale, { toValue: 0.88, duration: 80, useNativeDriver: true }),
+      Animated.spring(scale,  { toValue: 1,   friction: 4,  useNativeDriver: true }),
     ]).start();
     onPress();
   };
-
   return (
     <Animated.View style={[s.quickItem, { transform: [{ scale }] }]}>
       <TouchableOpacity onPress={handlePress} activeOpacity={1}>
@@ -134,11 +119,7 @@ function QuickItem({
   );
 }
 
-// ── Date filter multipliers (mock — in production filter real data) ───────────
-function applyDateFilter(
-  data: { totalSpent: number; categories: any[] },
-  range: DateRange
-) {
+function applyDateFilter(data: { totalSpent: number; categories: any[] }, range: DateRange) {
   const multiplier = range === 'Today' ? 0.08 : range === 'This Week' ? 0.35 : 1;
   return {
     totalSpent: Math.round(data.totalSpent * multiplier),
@@ -149,51 +130,45 @@ function applyDateFilter(
   };
 }
 
-// ── Main screen ───────────────────────────────────────────────────────────────
 export default function DashboardScreen() {
-  const router              = useRouter();
-  const { user }            = useAuth();
+  const router           = useRouter();
+  const { user }         = useAuth();
   const { data, isLoading, error, refresh } = useDashboard();
-  const { activeAlerts }    = useNotifications();
+  const { activeAlerts } = useNotifications();
 
-  // ── State ─────────────────────────────────────────────────────────────────
   const [dateRange,    setDateRange]    = useState<DateRange>('This Month');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const nextPayDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  // ── Filter tab animation ──────────────────────────────────────────────────
+  // ── Reload every time dashboard is focused ────────────────────────────────
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [])
+  );
+
   const filterAnim = useRef(new Animated.Value(DATE_RANGES.indexOf('This Month'))).current;
 
   const handleFilterChange = (range: DateRange) => {
-    const idx = DATE_RANGES.indexOf(range);
     setDateRange(range);
-    Animated.spring(filterAnim, { toValue: idx, friction: 6, useNativeDriver: false }).start();
+    Animated.spring(filterAnim, { toValue: DATE_RANGES.indexOf(range), friction: 6, useNativeDriver: false }).start();
   };
 
-  // ── Pull-to-refresh ───────────────────────────────────────────────────────
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     await refresh();
     setIsRefreshing(false);
   }, [refresh]);
 
-  // ── Quick shortcut handler ────────────────────────────────────────────────
   const handleQuickCategory = (categoryKey: string) => {
-    router.push({
-      pathname: '/(tabs)/add-expense',
-      params: { category: categoryKey },
-    });
+    router.push({ pathname: '/(tabs)/add-expense', params: { category: categoryKey } });
   };
 
-  // ── Filtered data ─────────────────────────────────────────────────────────
   const filteredData = data ? applyDateFilter(data, dateRange) : null;
+  const firstName    = user?.name?.split(' ')[0] ?? 'there';
+  const greeting     = getGreeting();
 
-  // ── Greeting ──────────────────────────────────────────────────────────────
-  const firstName  = user?.name?.split(' ')[0] ?? 'there';
-  const greeting   = getGreeting();
-
-  // ── Error state ───────────────────────────────────────────────────────────
   if (error) {
     return (
       <SafeAreaView style={s.screen}>
@@ -218,7 +193,6 @@ export default function DashboardScreen() {
     <SafeAreaView style={s.screen}>
       <StatusBar barStyle="dark-content" backgroundColor={Semantic.background} />
 
-      {/* ── Header with time-based greeting + first name ── */}
       <FadeSlide delay={0}>
         <View style={s.header}>
           <View style={s.headerLeft}>
@@ -242,7 +216,6 @@ export default function DashboardScreen() {
           style={s.scroll}
           contentContainerStyle={s.scrollContent}
           showsVerticalScrollIndicator={false}
-          // ── Pull-to-refresh ──
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
@@ -253,7 +226,6 @@ export default function DashboardScreen() {
             />
           }
         >
-          {/* ── Balance hero card ── */}
           <FadeSlide delay={60}>
             <BalanceCard
               balance={data.balance}
@@ -262,7 +234,6 @@ export default function DashboardScreen() {
             />
           </FadeSlide>
 
-          {/* ── Date range filter tabs ── */}
           <FadeSlide delay={90}>
             <View style={s.filterRow}>
               {DATE_RANGES.map((range) => {
@@ -274,16 +245,13 @@ export default function DashboardScreen() {
                     onPress={() => handleFilterChange(range)}
                     activeOpacity={0.8}
                   >
-                    <Text style={[s.filterTabText, isActive && s.filterTabTextActive]}>
-                      {range}
-                    </Text>
+                    <Text style={[s.filterTabText, isActive && s.filterTabTextActive]}>{range}</Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
           </FadeSlide>
 
-          {/* ── Stats mini-row ── */}
           <FadeSlide delay={110}>
             <View style={s.statsRow}>
               <View style={s.statCard}>
@@ -316,21 +284,15 @@ export default function DashboardScreen() {
             </View>
           </FadeSlide>
 
-          {/* ── Quick expense shortcuts ── */}
           <FadeSlide delay={140}>
             <SectionLabel title="Quick Add" />
             <View style={s.quickRow}>
               {QUICK_CATEGORIES.map((item) => (
-                <QuickItem
-                  key={item.key}
-                  item={item}
-                  onPress={() => handleQuickCategory(item.key)}
-                />
+                <QuickItem key={item.key} item={item} onPress={() => handleQuickCategory(item.key)} />
               ))}
             </View>
           </FadeSlide>
 
-          {/* ── Income sustainability ── */}
           <FadeSlide delay={170}>
             <SectionLabel title="Money Forecast" />
             <SustainabilityStatus
@@ -340,13 +302,12 @@ export default function DashboardScreen() {
             />
           </FadeSlide>
 
-          {/* ── Spending breakdown (filtered) ── */}
           <FadeSlide delay={200}>
-            <SectionLabel 
-              title="Spending Breakdown" 
-              action="See all" 
+            <SectionLabel
+              title="Spending Breakdown"
+              action="See all"
               onAction={() => router.push('/(tabs)/history')}
-          />
+            />
             <SpendingBreakdown
               categories={filteredData.categories.map(cat => ({
                 ...cat,
@@ -356,13 +317,11 @@ export default function DashboardScreen() {
             />
           </FadeSlide>
 
-          {/* ── Alerts ── */}
           <FadeSlide delay={230}>
             <SectionLabel title="Active Alerts" />
             <AlertsList alerts={activeAlerts} />
           </FadeSlide>
 
-          {/* ── Income info ── */}
           <FadeSlide delay={260}>
             <SectionLabel title="Income Info" />
             <IncomeInfo

@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
   Modal,
   ScrollView,
@@ -20,7 +21,6 @@ import { useAuth } from '../../hooks/useAuth';
 import { useUser } from '../../hooks/useUser';
 import { ProfileStyles as s } from '../../styles/profileStyles';
 
-// ── Staggered fade-slide ───────────────────────────────────────────────────────
 function FadeSlide({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   const opacity    = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(14)).current;
@@ -37,16 +37,24 @@ function FadeSlide({ children, delay = 0 }: { children: React.ReactNode; delay?:
   );
 }
 
-// ── Screen ─────────────────────────────────────────────────────────────────────
 export default function ProfileScreen() {
-  const router                    = useRouter();
-  const { logout, user }          = useAuth();
-  const { profile, savingsGoals } = useUser();
+  const router                              = useRouter();
+  const { logout, user }                    = useAuth();
+  const { profile, savingsGoals, editProfile } = useUser();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const handleLogout = async () => {
     setShowLogoutModal(false);
     await logout();
+  };
+
+  const handleSaveIncome = async (amount: number) => {
+    try {
+      await editProfile({ incomeAmount: amount });
+      Alert.alert('Saved', 'Income updated successfully.');
+    } catch {
+      Alert.alert('Error', 'Failed to update income. Please try again.');
+    }
   };
 
   const p = profile ?? {
@@ -100,12 +108,12 @@ export default function ProfileScreen() {
               incomeAmount={p.incomeAmount}
               incomeType={p.incomeType}
               incomeCycle={p.incomeCycle}
-              onSave={(amount) => console.log('Income updated:', amount)}
+              onSave={handleSaveIncome}
             />
           </View>
         </FadeSlide>
 
-        {/* ── Savings goals (only if any) ── */}
+        {/* ── Savings goals ── */}
         {savingsGoals.length > 0 && (
           <FadeSlide delay={180}>
             <View>

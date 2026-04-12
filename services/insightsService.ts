@@ -1,63 +1,59 @@
-import { mockInsights } from '@/data/mockData';
 import { MLInsights, SmartPurchaseDecision, SmartPurchaseRequest } from '../types/ml';
+import api from './api';
 
 export const insightsService = {
 
   getInsights: async (): Promise<MLInsights> => {
-    await new Promise((r) => setTimeout(r, 600));
-    return mockInsights as unknown as MLInsights;
+    const res = await api.get('/insights/');
+    return {
+      userId:             '',
+      userCluster:        res.data.user_cluster,
+      clusterDescription: res.data.cluster_description,
+      dailyBurnRate:      res.data.daily_burn_rate,
+      daysRemaining:      res.data.days_remaining,
+      riskLevel:          res.data.risk_level,
+      predictions:        [],
+      recommendations:    res.data.recommendations.map((r: string, i: number) => ({
+        id:          String(i),
+        type:        'spending-control',
+        title:       r,
+        description: r,
+        priority:    'medium',
+        createdAt:   '',
+      })),
+      lastUpdated: res.data.last_updated,
+    };
   },
 
   getSmartPurchaseDecision: async (request: SmartPurchaseRequest): Promise<SmartPurchaseDecision> => {
-    await new Promise((r) => setTimeout(r, 800));
-
-    // Risk thresholds: < ₱1500 = safe, ₱1500–₱3000 = caution, > ₱3000 = risky
-    const decision: SmartPurchaseDecision['decision'] =
-      request.amount < 1500 ? 'safe'    :
-      request.amount < 3000 ? 'caution' : 'risky';
-
-    const riskScore =
-      decision === 'safe'    ? Math.round(request.amount / 1500 * 30)  :
-      decision === 'caution' ? Math.round(30 + (request.amount - 1500) / 1500 * 40) :
-                               Math.min(100, Math.round(70 + (request.amount - 3000) / 1000 * 10));
-
-    const reasoning =
-      decision === 'safe'
-        ? `₱${request.amount.toLocaleString('en-PH')} is within your safe spending range. Your current balance can absorb this purchase without affecting your sustainability forecast.`
-        : decision === 'caution'
-        ? `₱${request.amount.toLocaleString('en-PH')} is manageable but will reduce your remaining budget significantly. Consider whether this is essential right now.`
-        : `₱${request.amount.toLocaleString('en-PH')} exceeds safe spending limits based on your current balance and daily burn rate. This purchase risks shortfall before your next income.`;
-
-    const suggestions: string[] =
-      decision === 'safe'
-        ? ['You can proceed with this purchase.', 'Consider logging it immediately after buying.']
-        : decision === 'caution'
-        ? ['Only proceed if this is a priority expense.', 'Look for a lower-cost alternative if possible.', 'Reduce spending in other categories this week.']
-        : ['Defer this purchase until next pay cycle.', 'Check if you can borrow or find a cheaper substitute.', 'Review your spending breakdown to free up budget first.'];
-
+    const res = await api.post('/smart-purchase/', {
+      amount:      request.amount,
+      category:    request.category,
+      description: request.description ?? '',
+    });
     return {
-      decision,
-      riskScore,
-      reasoning,
-      suggestions,
-      currentBalance:  20000, // replace with real balance from store
-      remainingBudget: 20000 - request.amount,
-      estimatedDaysUntilShortfall: decision === 'risky' ? 3 : undefined,
+      decision:                    res.data.decision,
+      riskScore:                   res.data.risk_score,
+      reasoning:                   res.data.reasoning,
+      suggestions:                 res.data.suggestions,
+      currentBalance:              res.data.current_balance,
+      remainingBudget:             res.data.remaining_budget,
+      estimatedDaysUntilShortfall: res.data.estimated_days_until_shortfall,
     };
   },
 
   getRecommendations: async (): Promise<string[]> => {
-    await new Promise((r) => setTimeout(r, 400));
-    return mockInsights.recommendations;
+    const res = await api.get('/insights/');
+    return res.data.recommendations ?? [];
   },
 
   getUserCluster: async (): Promise<string> => {
-    await new Promise((r) => setTimeout(r, 400));
-    return mockInsights.spenderType;
+    const res = await api.get('/insights/');
+    return res.data.user_cluster ?? 'Balanced';
   },
 
   getPredictions: async (): Promise<any[]> => {
-    await new Promise((r) => setTimeout(r, 500));
-    return mockInsights.weeklyTrend;
+    const res = await api.get('/insights/');
+    return res.data.weekly_trend ?? [];
   },
 };
