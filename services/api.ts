@@ -16,21 +16,25 @@ const api = {
       method: 'GET',
       headers: getHeaders(getToken() ?? undefined),
     });
-    if (!res.ok) throw new Error(`GET ${url} failed: ${res.status}`);
+    if (!res.ok) {
+      let errorDetail = `GET ${url} failed: ${res.status}`;
+      try { const e = await res.json(); errorDetail = JSON.stringify(e); } catch {}
+      throw new Error(errorDetail);
+    }
     const data = await res.json();
     return { data };
   },
 
   post: async (url: string, body?: any, _config?: any) => {
-    const token = getToken();
     const res = await fetch(`${BASE_URL}${url}`, {
       method: 'POST',
-      headers: getHeaders(token ?? undefined),
+      headers: getHeaders(getToken() ?? undefined),
       body: JSON.stringify(body),
     });
     if (!res.ok) {
-      const err = await res.json();
-      throw new Error(JSON.stringify(err));
+      let errorDetail = `POST ${url} failed: ${res.status}`;
+      try { const e = await res.json(); errorDetail = JSON.stringify(e); } catch {}
+      throw new Error(errorDetail);
     }
     const data = await res.json();
     return { data };
@@ -42,7 +46,11 @@ const api = {
       headers: getHeaders(getToken() ?? undefined),
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error(`PATCH ${url} failed: ${res.status}`);
+    if (!res.ok) {
+      let errorDetail = `PATCH ${url} failed: ${res.status}`;
+      try { const e = await res.json(); errorDetail = JSON.stringify(e); } catch {}
+      throw new Error(errorDetail);
+    }
     const data = await res.json();
     return { data };
   },
@@ -53,7 +61,11 @@ const api = {
       headers: getHeaders(getToken() ?? undefined),
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error(`PUT ${url} failed: ${res.status}`);
+    if (!res.ok) {
+      let errorDetail = `PUT ${url} failed: ${res.status}`;
+      try { const e = await res.json(); errorDetail = JSON.stringify(e); } catch {}
+      throw new Error(errorDetail);
+    }
     const data = await res.json();
     return { data };
   },
@@ -63,7 +75,12 @@ const api = {
       method: 'DELETE',
       headers: getHeaders(getToken() ?? undefined),
     });
-    if (!res.ok) throw new Error(`DELETE ${url} failed: ${res.status}`);
+    if (!res.ok) {
+      let errorDetail = `DELETE ${url} failed: ${res.status}`;
+      try { const e = await res.json(); errorDetail = JSON.stringify(e); } catch {}
+      throw new Error(errorDetail);
+    }
+    // 204 No Content — no body to parse
     return { data: {} };
   },
 };

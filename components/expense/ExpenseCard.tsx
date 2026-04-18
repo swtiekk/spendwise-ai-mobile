@@ -16,7 +16,6 @@ interface ExpenseCardProps {
   onDelete?: () => void;
 }
 
-// Maps category → Ionicons name
 const CATEGORY_ICONS: Record<string, React.ComponentProps<typeof Ionicons>['name']> = {
   food:          'fast-food-outline',
   transport:     'car-outline',
@@ -29,8 +28,18 @@ const CATEGORY_ICONS: Record<string, React.ComponentProps<typeof Ionicons>['name
   other:         'ellipsis-horizontal-outline',
 };
 
-function getCategoryIcon(category: string): React.ComponentProps<typeof Ionicons>['name'] {
-  return CATEGORY_ICONS[category.toLowerCase()] ?? 'ellipsis-horizontal-outline';
+function safeString(val: unknown): string {
+  if (val === null || val === undefined) return 'other';
+  if (typeof val === 'string') return val.toLowerCase();
+  if (typeof val === 'object') {
+    const obj = val as any;
+    return String(obj.key ?? obj.name ?? obj.slug ?? 'other').toLowerCase();
+  }
+  return String(val).toLowerCase();
+}
+
+function getCategoryIcon(category: unknown): React.ComponentProps<typeof Ionicons>['name'] {
+  return CATEGORY_ICONS[safeString(category)] ?? 'ellipsis-horizontal-outline';
 }
 
 export const ExpenseCard: React.FC<ExpenseCardProps> = ({
@@ -41,9 +50,10 @@ export const ExpenseCard: React.FC<ExpenseCardProps> = ({
   color = '#6366F1',
   onPress,
 }) => {
-  // Icon bg is the expense color at 15% opacity — derived from the color prop
-  const iconBg  = color + '22';
-  const catIcon = getCategoryIcon(category);
+  const safeCategory = safeString(category);
+  const iconBg       = color + '22';
+  const catIcon      = getCategoryIcon(category);
+  const displayCat   = safeCategory.charAt(0).toUpperCase() + safeCategory.slice(1);
 
   return (
     <TouchableOpacity
@@ -51,25 +61,23 @@ export const ExpenseCard: React.FC<ExpenseCardProps> = ({
       onPress={onPress}
       activeOpacity={0.7}
     >
-      {/* Category icon */}
       <View style={[s.expenseIconWrap, { backgroundColor: iconBg }]}>
         <Ionicons name={catIcon} size={20} color={color} />
       </View>
 
-      {/* Title + meta */}
       <View style={s.expenseInfo}>
-        <Text style={s.expenseTitle} numberOfLines={1}>{title}</Text>
+        <Text style={s.expenseTitle} numberOfLines={1}>
+          {String(title ?? '')}
+        </Text>
         <View style={s.expenseMeta}>
-          {/* Category pill */}
           <View style={[s.expenseCategoryPill, { backgroundColor: iconBg }]}>
-            <Text style={[s.expenseCategoryText, { color }]}>{category}</Text>
+            <Text style={[s.expenseCategoryText, { color }]}>{displayCat}</Text>
           </View>
           <View style={s.expenseDot} />
           <Text style={s.expenseDate}>{formatDate(date, 'short')}</Text>
         </View>
       </View>
 
-      {/* Amount */}
       <View style={s.expenseRight}>
         <Text style={s.expenseAmount}>
           -{formatCurrency(amount)}

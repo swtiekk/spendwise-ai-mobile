@@ -1,28 +1,66 @@
 import { Semantic } from '@constants/colors';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo, useState } from 'react';
-import { Alert, Modal, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback, useMemo, useState } from 'react';
+import {
+  Alert,
+  Modal,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '../../components/common/EmptyState';
 import { ErrorMessage } from '../../components/common/ErrorMessage';
 import { ExpenseCard } from '../../components/expense/ExpenseCard';
-import { mockExpenses } from '../../data/mockData';
 import { useExpenses } from '../../hooks/useExpenses';
 import { HistoryStyles as s } from '../../styles/historyStyles';
+import { Expense } from '../../types/expense';
 
-type Expense = typeof mockExpenses[0];
-type Filter = 'All' | 'Food' | 'Transport' | 'Shopping' | 'Health' | 'Utilities' | 'Entertainment' | 'Savings';
+type Filter = 'All' | 'Food' | 'Transport' | 'Shopping' | 'Health' | 'Utilities' | 'Entertainment' | 'Other';
 type SortOption = 'newest' | 'oldest' | 'highest' | 'lowest';
 
-const FILTERS: Filter[] = ['All', 'Food', 'Transport', 'Shopping', 'Health', 'Utilities', 'Entertainment', 'Savings'];
-const SORT_OPTIONS = [
-  { label: 'Newest First',  value: 'newest'  },
-  { label: 'Oldest First',  value: 'oldest'  },
-  { label: 'Highest Amount',value: 'highest' },
-  { label: 'Lowest Amount', value: 'lowest'  },
-] as const;
+const FILTERS: Filter[] = [
+  'All', 'Food', 'Transport', 'Shopping',
+  'Health', 'Utilities', 'Entertainment', 'Other',
+];
 
-// Group expenses by date label
+const SORT_OPTIONS: { label: string; value: SortOption }[] = [
+  { label: 'Newest First',   value: 'newest'  },
+  { label: 'Oldest First',   value: 'oldest'  },
+  { label: 'Highest Amount', value: 'highest' },
+  { label: 'Lowest Amount',  value: 'lowest'  },
+];
+
+const CATEGORY_COLORS: Record<string, string> = {
+  food:          '#F59E0B',
+  transport:     '#6366F1',
+  shopping:      '#EC4899',
+  utilities:     '#10B981',
+  health:        '#EF4444',
+  entertainment: '#8B5CF6',
+  education:     '#3B82F6',
+  other:         '#6B7280',
+};
+
+function safeCategory(val: unknown): string {
+  if (val === null || val === undefined) return 'other';
+  if (typeof val === 'string') return val.toLowerCase();
+  if (typeof val === 'object') {
+    const obj = val as any;
+    return String(obj.key ?? obj.name ?? obj.slug ?? 'other').toLowerCase();
+  }
+  return String(val).toLowerCase();
+}
+
+function capitalize(s: string): string {
+  if (!s) return 'Other';
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 function groupByDate(expenses: Expense[]) {
   const today     = new Date();
   const yesterday = new Date(today);
@@ -30,9 +68,9 @@ function groupByDate(expenses: Expense[]) {
 
   const groups: Record<string, Expense[]> = {};
   expenses.forEach(exp => {
-    const d = new Date(exp.date);
+    const d = new Date(exp.timestamp);
     const label =
-      d.toDateString() === today.toDateString()     ? 'Today' :
+      d.toDateString() === today.toDateString()     ? 'Today'     :
       d.toDateString() === yesterday.toDateString() ? 'Yesterday' :
       d.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' });
     if (!groups[label]) groups[label] = [];
@@ -42,62 +80,103 @@ function groupByDate(expenses: Expense[]) {
   return Object.entries(groups).map(([label, data]) => ({ label, data }));
 }
 
-const formatCurrency = (n: number) => '₱' + n.toLocaleString('en-PH');
-const formatDate = (d: string) =>
-  new Date(d).toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+const formatCurrency = (n: number) =>
+  '₱' + Number(n ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 0 });
+
+const formatDateLong = (iso: string) => {
+  try {
+    return new Date(iso).toLocaleDateString('en-PH', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    });
+  } catch {
+    return iso ?? '—';
+  }
+};
 
 export default function HistoryScreen() {
-  const { error, refresh } = useExpenses();
-  const [activeFilter, setActiveFilter]     = useState<Filter>('All');
-  const [activeSort, setActiveSort]         = useState<SortOption>('newest');
-  const [tempSort, setTempSort]             = useState<SortOption>('newest');
-  const [showSortModal, setShowSortModal]   = useState(false);
-  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
-  const [deletedIds, setDeletedIds]         = useState<Set<string | number>>(new Set());
+  const { expenses, error, refresh, deleteExpense } = useExpenses();
 
-  const handleDelete = (expense: Expense) => {
-    Alert.alert(
-      'Delete Expense',
-      `Are you sure you want to delete "${expense.title}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            setDeletedIds(prev => new Set(prev).add(expense.id));
-            setSelectedExpense(null);
-          },
-        },
-      ]
-    );
-  };
+  const [activeFilter,    setActiveFilter]    = useState<Filter>('All');
+  const [activeSort,      setActiveSort]      = useState<SortOption>('newest');
+  const [tempSort,        setTempSort]        = useState<SortOption>('newest');
+  const [showSortModal,   setShowSortModal]   = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  const [isDeleting,      setIsDeleting]      = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh])
+  );
+
+  const handleDelete = useCallback((expense: Expense) => {
+    const label = String(expense.description ?? expense.id ?? 'this expense');
+
+    const doDelete = async () => {
+      try {
+        setIsDeleting(true);
+        console.log('[handleDelete] id:', expense.id);
+        await deleteExpense(String(expense.id));
+        console.log('[handleDelete] success');
+        setSelectedExpense(null);
+      } catch (err: any) {
+        console.error('[handleDelete] error:', err?.message);
+        Alert.alert(
+          'Delete Failed',
+          String(err?.message ?? 'Failed to delete. Please try again.')
+        );
+      } finally {
+        setIsDeleting(false);
+      }
+    };
+
+    // Alert.alert does not work on web (localhost) — use window.confirm instead
+    if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+      if (window.confirm(`Are you sure you want to delete "${label}"?`)) {
+        doDelete();
+      }
+    } else {
+      Alert.alert(
+        'Delete Expense',
+        `Are you sure you want to delete "${label}"?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Delete', style: 'destructive', onPress: doDelete },
+        ]
+      );
+    }
+  }, [deleteExpense]);
 
   const filtered = useMemo(() => {
-    const list = activeFilter === 'All'
-      ? mockExpenses
-      : mockExpenses.filter(e => e.category.toLowerCase() === activeFilter.toLowerCase());
+    const list =
+      activeFilter === 'All'
+        ? expenses
+        : expenses.filter(e =>
+            safeCategory(e.category) === activeFilter.toLowerCase()
+          );
 
-    return [...list]
-      .filter(e => !deletedIds.has(e.id))
-      .sort((a, b) => {
-        if (activeSort === 'newest')  return new Date(b.date).getTime() - new Date(a.date).getTime();
-        if (activeSort === 'oldest')  return new Date(a.date).getTime() - new Date(b.date).getTime();
-        if (activeSort === 'highest') return b.amount - a.amount;
-        if (activeSort === 'lowest')  return a.amount - b.amount;
-        return 0;
-      });
-  }, [activeFilter, activeSort, deletedIds]);
+    return [...list].sort((a, b) => {
+      const aTime = new Date(a.timestamp ?? 0).getTime();
+      const bTime = new Date(b.timestamp ?? 0).getTime();
+      if (activeSort === 'newest')  return bTime - aTime;
+      if (activeSort === 'oldest')  return aTime - bTime;
+      if (activeSort === 'highest') return Number(b.amount) - Number(a.amount);
+      if (activeSort === 'lowest')  return Number(a.amount) - Number(b.amount);
+      return 0;
+    });
+  }, [expenses, activeFilter, activeSort]);
 
   const grouped    = useMemo(() => groupByDate(filtered), [filtered]);
-  const totalSpent = useMemo(() => filtered.reduce((sum, e) => sum + e.amount, 0), [filtered]);
-  const avgPerDay  = filtered.length > 0 ? Math.round(totalSpent / Math.max(grouped.length, 1)) : 0;
+  const totalSpent = useMemo(() => filtered.reduce((sum, e) => sum + Number(e.amount ?? 0), 0), [filtered]);
+  const avgPerDay  = filtered.length > 0
+    ? Math.round(totalSpent / Math.max(grouped.length, 1))
+    : 0;
 
   return (
     <SafeAreaView style={s.screen}>
       <StatusBar barStyle="dark-content" backgroundColor={Semantic.background} />
 
-      {/* Header */}
+      {/* ── Header ── */}
       <View style={s.header}>
         <View style={s.headerLeft}>
           <Text style={s.headerEyebrow}>Overview</Text>
@@ -112,11 +191,11 @@ export default function HistoryScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Summary */}
+      {/* ── Summary Strip ── */}
       <View style={s.summaryStrip}>
         {[
-          { label: 'Transactions', value: String(filtered.length), style: s.summaryValue },
-          { label: 'Total Spent',  value: formatCurrency(totalSpent), style: s.summaryValueRed },
+          { label: 'Transactions', value: String(filtered.length),    style: s.summaryValue     },
+          { label: 'Total Spent',  value: formatCurrency(totalSpent), style: s.summaryValueRed  },
           { label: 'Avg / Day',    value: formatCurrency(avgPerDay),  style: s.summaryValueTeal },
         ].map(({ label, value, style }, i, arr) => (
           <React.Fragment key={label}>
@@ -129,7 +208,7 @@ export default function HistoryScreen() {
         ))}
       </View>
 
-      {/* Filter bar */}
+      {/* ── Filter Bar ── */}
       <View style={s.filterWrap}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={s.filterContent}>
@@ -147,7 +226,7 @@ export default function HistoryScreen() {
         </ScrollView>
       </View>
 
-      {/* Expense list */}
+      {/* ── Expense List ── */}
       {error ? (
         <ErrorMessage message={error} action={{ label: 'Retry', onPress: refresh }} />
       ) : filtered.length === 0 ? (
@@ -157,24 +236,41 @@ export default function HistoryScreen() {
           message={`No ${activeFilter === 'All' ? '' : activeFilter + ' '}expenses found.`}
         />
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={s.scrollContent}
+        >
           {grouped.map(({ label, data }) => (
             <View key={label} style={s.dateGroup}>
               <Text style={s.dateGroupLabel}>{label}</Text>
-              {data.map(expense => (
-                <ExpenseCard
-                  key={expense.id}
-                  {...expense}
-                  onPress={() => setSelectedExpense(expense)}
-                />
-              ))}
+              {data.map(expense => {
+                const cat   = safeCategory(expense.category);
+                const color = CATEGORY_COLORS[cat] ?? '#6B7280';
+                return (
+                  <ExpenseCard
+                    key={String(expense.id)}
+                    id={String(expense.id)}
+                    title={String(expense.description ?? '')}
+                    category={cat}
+                    amount={Number(expense.amount ?? 0)}
+                    date={String(expense.timestamp ?? '')}
+                    color={color}
+                    onPress={() => setSelectedExpense(expense)}
+                  />
+                );
+              })}
             </View>
           ))}
         </ScrollView>
       )}
 
       {/* ── Sort Modal ── */}
-      <Modal visible={showSortModal} transparent animationType="slide" onRequestClose={() => setShowSortModal(false)}>
+      <Modal
+        visible={showSortModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowSortModal(false)}
+      >
         <TouchableOpacity style={m.overlay} activeOpacity={1} onPress={() => setShowSortModal(false)}>
           <TouchableOpacity activeOpacity={1} style={m.sheet}>
             <View style={m.handle} />
@@ -184,11 +280,15 @@ export default function HistoryScreen() {
               <TouchableOpacity
                 key={opt.value}
                 style={[m.sortOption, tempSort === opt.value && m.sortOptionActive]}
-                onPress={() => setTempSort(opt.value as SortOption)}
+                onPress={() => setTempSort(opt.value)}
                 activeOpacity={0.7}
               >
-                <Text style={[m.sortText, tempSort === opt.value && m.sortTextActive]}>{opt.label}</Text>
-                {tempSort === opt.value && <Ionicons name="checkmark" size={18} color="#00b4a6" />}
+                <Text style={[m.sortText, tempSort === opt.value && m.sortTextActive]}>
+                  {opt.label}
+                </Text>
+                {tempSort === opt.value && (
+                  <Ionicons name="checkmark" size={18} color="#00b4a6" />
+                )}
               </TouchableOpacity>
             ))}
 
@@ -199,7 +299,11 @@ export default function HistoryScreen() {
             >
               <Text style={m.applyText}>Apply</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={m.cancelBtn} onPress={() => setShowSortModal(false)} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={m.cancelBtn}
+              onPress={() => setShowSortModal(false)}
+              activeOpacity={0.7}
+            >
               <Text style={m.cancelText}>Cancel</Text>
             </TouchableOpacity>
           </TouchableOpacity>
@@ -207,55 +311,79 @@ export default function HistoryScreen() {
       </Modal>
 
       {/* ── Expense Detail Modal ── */}
-      <Modal visible={!!selectedExpense} transparent animationType="slide" onRequestClose={() => setSelectedExpense(null)}>
+      <Modal
+        visible={!!selectedExpense}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedExpense(null)}
+      >
         <TouchableOpacity style={m.overlay} activeOpacity={1} onPress={() => setSelectedExpense(null)}>
           <TouchableOpacity activeOpacity={1} style={m.sheet}>
             <View style={m.handle} />
-            {selectedExpense && (
-              <>
-                <View style={[m.detailIconWrap, { backgroundColor: selectedExpense.color + '22' }]}>
-                  <Text style={{ fontSize: 36 }}>{selectedExpense.icon}</Text>
-                </View>
-                <Text style={m.detailTitle}>{selectedExpense.title}</Text>
-                <Text style={m.detailAmount}>-{formatCurrency(selectedExpense.amount)}</Text>
 
-                <View style={m.divider} />
-                {[
-                  { label: 'Category',       value: selectedExpense.category },
-                  { label: 'Date',           value: formatDate(selectedExpense.date) },
-                  { label: 'Transaction ID', value: `#${selectedExpense.id}` },
-                ].map(({ label, value }) => (
-                  <View key={label} style={m.detailRow}>
-                    <Text style={m.detailLabel}>{label}</Text>
-                    <Text style={m.detailValue}>{value}</Text>
+            {selectedExpense && (() => {
+              const cat      = safeCategory(selectedExpense.category);
+              const color    = CATEGORY_COLORS[cat] ?? '#6B7280';
+              const catLabel = capitalize(cat);
+              const title    = String(selectedExpense.description ?? '—');
+              const dateStr  = String(selectedExpense.timestamp ?? '');
+              const txId     = String(selectedExpense.id ?? '—');
+
+              return (
+                <>
+                  <View style={[m.detailIconWrap, { backgroundColor: color + '22' }]}>
+                    <Ionicons name="receipt-outline" size={36} color={color} />
                   </View>
-                ))}
-                <View style={m.divider} />
 
-                {/* Delete Button */}
-                <TouchableOpacity
-                  style={m.deleteBtn}
-                  onPress={() => handleDelete(selectedExpense)}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="trash-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
-                  <Text style={m.deleteText}>Delete Expense</Text>
-                </TouchableOpacity>
+                  <Text style={m.detailTitle}>{title}</Text>
+                  <Text style={m.detailAmount}>
+                    -{formatCurrency(Number(selectedExpense.amount ?? 0))}
+                  </Text>
 
-                <TouchableOpacity style={m.closeBtn} onPress={() => setSelectedExpense(null)} activeOpacity={0.8}>
-                  <Text style={m.closeText}>Close</Text>
-                </TouchableOpacity>
-              </>
-            )}
+                  <View style={m.divider} />
+
+                  {[
+                    { label: 'Category',       value: catLabel },
+                    { label: 'Date',           value: formatDateLong(dateStr) },
+                    { label: 'Transaction ID', value: `#${txId}` },
+                  ].map(({ label, value }) => (
+                    <View key={label} style={m.detailRow}>
+                      <Text style={m.detailLabel}>{label}</Text>
+                      <Text style={m.detailValue}>{value}</Text>
+                    </View>
+                  ))}
+
+                  <View style={m.divider} />
+
+                  <TouchableOpacity
+                    style={[m.deleteBtn, isDeleting && { opacity: 0.6 }]}
+                    onPress={() => { if (!isDeleting) handleDelete(selectedExpense); }}
+                    activeOpacity={0.8}
+                    disabled={isDeleting}
+                  >
+                    <Ionicons name="trash-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+                    <Text style={m.deleteText}>
+                      {isDeleting ? 'Deleting...' : 'Delete Expense'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={m.closeBtn}
+                    onPress={() => setSelectedExpense(null)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={m.closeText}>Close</Text>
+                  </TouchableOpacity>
+                </>
+              );
+            })()}
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
-
     </SafeAreaView>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const m = StyleSheet.create({
   iconBtn:          { width: 38, height: 38, borderRadius: 11, backgroundColor: '#f5f5f5', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#e0e0e0' },
   overlay:          { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
