@@ -8,6 +8,28 @@ import {
 } from '../types/expense';
 import api from './api';
 
+function extractCategory(raw: any): string {
+  const cat = raw.category_key ?? raw.category ?? raw.category_name ?? 'other';
+  if (typeof cat === 'object' && cat !== null) {
+    return String(cat.key ?? cat.name ?? cat.slug ?? cat.id ?? 'other').toLowerCase();
+  }
+  return String(cat).toLowerCase();
+}
+
+function mapExpense(raw: any): Expense {
+  console.log('[mapExpense] raw:', JSON.stringify(raw));
+  return {
+    id:          String(raw.id ?? ''),
+    userId:      String(raw.user ?? raw.user_id ?? raw.userId ?? ''),
+    amount:      Number(raw.amount ?? 0),
+    category:    extractCategory(raw) as any,
+    description: String(raw.description ?? raw.title ?? ''),
+    timestamp:   String(raw.timestamp ?? raw.created_at ?? raw.createdAt ?? new Date().toISOString()),
+    createdAt:   String(raw.created_at  ?? raw.createdAt  ?? ''),
+    updatedAt:   String(raw.updated_at  ?? raw.updatedAt  ?? ''),
+  };
+}
+
 export const expenseService = {
 
   createExpense: async (data: CreateExpenseRequest): Promise<Expense> => {
@@ -17,12 +39,13 @@ export const expenseService = {
       description:  data.description,
       timestamp:    data.timestamp,
     });
-    return res.data;
+    return mapExpense(res.data);
   },
 
   getExpenses: async (page = 1, pageSize = 20): Promise<PaginatedResponse<Expense>> => {
-    const res = await api.get(`/expenses/?page=${page}&page_size=${pageSize}`);
-    const items = Array.isArray(res.data) ? res.data : res.data.results ?? [];
+    const res   = await api.get(`/expenses/?page=${page}&page_size=${pageSize}`);
+    const raw   = Array.isArray(res.data) ? res.data : (res.data.results ?? []);
+    const items = raw.map(mapExpense);
     return {
       items,
       total:           items.length,
@@ -35,7 +58,7 @@ export const expenseService = {
 
   getExpense: async (id: string): Promise<Expense> => {
     const res = await api.get(`/expenses/${id}/`);
-    return res.data;
+    return mapExpense(res.data);
   },
 
   updateExpense: async (id: string, data: Partial<CreateExpenseRequest>): Promise<Expense> => {
@@ -44,11 +67,18 @@ export const expenseService = {
       ...(data.category    && { category_key: data.category }),
       ...(data.description && { description:  data.description }),
     });
-    return res.data;
+    return mapExpense(res.data);
   },
 
   deleteExpense: async (id: string): Promise<void> => {
-    await api.delete(`/expenses/${id}/`);
+    console.log('[expenseService] DELETE /expenses/' + id + '/');
+    try {
+      await api.delete(`/expenses/${id}/`);
+      console.log('[expenseService] delete success');
+    } catch (err: any) {
+      console.error('[expenseService] delete failed:', err?.message);
+      throw err;
+    }
   },
 
   recordIncome: async (data: CreateIncomeRequest): Promise<Income> => {
@@ -70,6 +100,7 @@ export const expenseService = {
 
   getExpensesByDateRange: async (startDate: string, endDate: string): Promise<Expense[]> => {
     const res = await api.get(`/expenses/?start_date=${startDate}&end_date=${endDate}`);
-    return Array.isArray(res.data) ? res.data : res.data.results ?? [];
+    const raw = Array.isArray(res.data) ? res.data : (res.data.results ?? []);
+    return raw.map(mapExpense);
   },
 };

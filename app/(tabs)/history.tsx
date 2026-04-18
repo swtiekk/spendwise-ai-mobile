@@ -1,73 +1,76 @@
 import { Semantic } from '@constants/colors';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
-import { Modal, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Alert,
+  Modal,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '../../components/common/EmptyState';
 import { ErrorMessage } from '../../components/common/ErrorMessage';
 import { ExpenseCard } from '../../components/expense/ExpenseCard';
 import { useExpenses } from '../../hooks/useExpenses';
 import { HistoryStyles as s } from '../../styles/historyStyles';
+import { Expense } from '../../types/expense';
 
-type Filter = 'All' | 'Food' | 'Transport' | 'Shopping' | 'Health' | 'Utilities' | 'Entertainment' | 'Education' | 'Other';
+type Filter = 'All' | 'Food' | 'Transport' | 'Shopping' | 'Health' | 'Utilities' | 'Entertainment' | 'Other';
 type SortOption = 'newest' | 'oldest' | 'highest' | 'lowest';
 
-const FILTERS: Filter[] = ['All', 'Food', 'Transport', 'Shopping', 'Health', 'Utilities', 'Entertainment', 'Education', 'Other'];
-const SORT_OPTIONS = [
+const FILTERS: Filter[] = [
+  'All', 'Food', 'Transport', 'Shopping',
+  'Health', 'Utilities', 'Entertainment', 'Other',
+];
+
+const SORT_OPTIONS: { label: string; value: SortOption }[] = [
   { label: 'Newest First',   value: 'newest'  },
   { label: 'Oldest First',   value: 'oldest'  },
   { label: 'Highest Amount', value: 'highest' },
   { label: 'Lowest Amount',  value: 'lowest'  },
-] as const;
+];
 
-// ── Category display helpers ──────────────────────────────────────────────────
-const CATEGORY_CONFIG: Record<string, { label: string; icon: string; color: string }> = {
-  food:          { label: 'Food',          icon: 'fast-food-outline',          color: '#F59E0B' },
-  transport:     { label: 'Transport',     icon: 'car-outline',                 color: '#6366F1' },
-  entertainment: { label: 'Entertainment', icon: 'game-controller-outline',     color: '#8B5CF6' },
-  utilities:     { label: 'Utilities',     icon: 'flash-outline',               color: '#EF4444' },
-  shopping:      { label: 'Shopping',      icon: 'bag-outline',                 color: '#EC4899' },
-  health:        { label: 'Health',        icon: 'medical-outline',             color: '#22C55E' },
-  education:     { label: 'Education',     icon: 'book-outline',                color: '#3B82F6' },
-  other:         { label: 'Other',         icon: 'ellipsis-horizontal-outline', color: '#9CA3AF' },
+const CATEGORY_COLORS: Record<string, string> = {
+  food:          '#F59E0B',
+  transport:     '#6366F1',
+  shopping:      '#EC4899',
+  utilities:     '#10B981',
+  health:        '#EF4444',
+  entertainment: '#8B5CF6',
+  education:     '#3B82F6',
+  other:         '#6B7280',
 };
 
-function getCategoryConfig(category: string | null | undefined) {
-  if (!category) return CATEGORY_CONFIG.other;
-  return CATEGORY_CONFIG[category.toLowerCase()] ?? CATEGORY_CONFIG.other;
+function safeCategory(val: unknown): string {
+  if (val === null || val === undefined) return 'other';
+  if (typeof val === 'string') return val.toLowerCase();
+  if (typeof val === 'object') {
+    const obj = val as any;
+    return String(obj.key ?? obj.name ?? obj.slug ?? 'other').toLowerCase();
+  }
+  return String(val).toLowerCase();
 }
 
-// ── Normalize backend Expense to display format ───────────────────────────────
-// Django returns category as a nested object: { id, key, name, ... }
-function normalizeExpense(exp: any) {
-  const categoryKey = exp.category?.key ?? exp.category ?? 'other';
-  const cfg = getCategoryConfig(categoryKey);
-  return {
-    id:          String(exp.id),
-    title:       exp.description || cfg.label,
-    amount:      Number(exp.amount) || 0,
-    category:    cfg.label,
-    categoryKey: categoryKey,
-    date:        exp.timestamp || exp.created_at || new Date().toISOString(),
-    icon:        cfg.icon,
-    color:       cfg.color,
-  };
+function capitalize(s: string): string {
+  if (!s) return 'Other';
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-type NormalizedExpense = ReturnType<typeof normalizeExpense>;
-
-// ── Group by date ─────────────────────────────────────────────────────────────
-function groupByDate(expenses: NormalizedExpense[]) {
+function groupByDate(expenses: Expense[]) {
   const today     = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
 
-  const groups: Record<string, NormalizedExpense[]> = {};
+  const groups: Record<string, Expense[]> = {};
   expenses.forEach(exp => {
-    const d = new Date(exp.date);
+    const d = new Date(exp.timestamp);
     const label =
-      d.toDateString() === today.toDateString()     ? 'Today' :
+      d.toDateString() === today.toDateString()     ? 'Today'     :
       d.toDateString() === yesterday.toDateString() ? 'Yesterday' :
       d.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' });
     if (!groups[label]) groups[label] = [];
@@ -77,49 +80,97 @@ function groupByDate(expenses: NormalizedExpense[]) {
   return Object.entries(groups).map(([label, data]) => ({ label, data }));
 }
 
-const formatCurrency = (n: number) => '₱' + n.toLocaleString('en-PH');
-const formatDate = (d: string) =>
-  new Date(d).toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+const formatCurrency = (n: number) =>
+  '₱' + Number(n ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 0 });
 
-// ── Screen ────────────────────────────────────────────────────────────────────
+const formatDateLong = (iso: string) => {
+  try {
+    return new Date(iso).toLocaleDateString('en-PH', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    });
+  } catch {
+    return iso ?? '—';
+  }
+};
+
 export default function HistoryScreen() {
-  const { expenses, error, refresh } = useExpenses();
+  const { expenses, error, refresh, deleteExpense } = useExpenses();
 
   const [activeFilter,    setActiveFilter]    = useState<Filter>('All');
   const [activeSort,      setActiveSort]      = useState<SortOption>('newest');
   const [tempSort,        setTempSort]        = useState<SortOption>('newest');
   const [showSortModal,   setShowSortModal]   = useState(false);
-  const [selectedExpense, setSelectedExpense] = useState<NormalizedExpense | null>(null);
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  const [isDeleting,      setIsDeleting]      = useState(false);
 
-  // ── Reload every time screen is focused ──────────────────────────────────
   useFocusEffect(
     useCallback(() => {
       refresh();
-    }, [])
+    }, [refresh])
   );
 
-  const normalized = useMemo(() =>
-    (expenses ?? []).map(normalizeExpense),
-    [expenses]
-  );
+  const handleDelete = useCallback((expense: Expense) => {
+    const label = String(expense.description ?? expense.id ?? 'this expense');
+
+    const doDelete = async () => {
+      try {
+        setIsDeleting(true);
+        console.log('[handleDelete] id:', expense.id);
+        await deleteExpense(String(expense.id));
+        console.log('[handleDelete] success');
+        setSelectedExpense(null);
+      } catch (err: any) {
+        console.error('[handleDelete] error:', err?.message);
+        Alert.alert(
+          'Delete Failed',
+          String(err?.message ?? 'Failed to delete. Please try again.')
+        );
+      } finally {
+        setIsDeleting(false);
+      }
+    };
+
+    // Alert.alert does not work on web (localhost) — use window.confirm instead
+    if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+      if (window.confirm(`Are you sure you want to delete "${label}"?`)) {
+        doDelete();
+      }
+    } else {
+      Alert.alert(
+        'Delete Expense',
+        `Are you sure you want to delete "${label}"?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Delete', style: 'destructive', onPress: doDelete },
+        ]
+      );
+    }
+  }, [deleteExpense]);
 
   const filtered = useMemo(() => {
-    const list = activeFilter === 'All'
-      ? normalized
-      : normalized.filter(e => e.category.toLowerCase() === activeFilter.toLowerCase());
+    const list =
+      activeFilter === 'All'
+        ? expenses
+        : expenses.filter(e =>
+            safeCategory(e.category) === activeFilter.toLowerCase()
+          );
 
     return [...list].sort((a, b) => {
-      if (activeSort === 'newest')  return new Date(b.date).getTime() - new Date(a.date).getTime();
-      if (activeSort === 'oldest')  return new Date(a.date).getTime() - new Date(b.date).getTime();
-      if (activeSort === 'highest') return b.amount - a.amount;
-      if (activeSort === 'lowest')  return a.amount - b.amount;
+      const aTime = new Date(a.timestamp ?? 0).getTime();
+      const bTime = new Date(b.timestamp ?? 0).getTime();
+      if (activeSort === 'newest')  return bTime - aTime;
+      if (activeSort === 'oldest')  return aTime - bTime;
+      if (activeSort === 'highest') return Number(b.amount) - Number(a.amount);
+      if (activeSort === 'lowest')  return Number(a.amount) - Number(b.amount);
       return 0;
     });
-  }, [normalized, activeFilter, activeSort]);
+  }, [expenses, activeFilter, activeSort]);
 
   const grouped    = useMemo(() => groupByDate(filtered), [filtered]);
-  const totalSpent = useMemo(() => filtered.reduce((sum, e) => sum + e.amount, 0), [filtered]);
-  const avgPerDay  = filtered.length > 0 ? Math.round(totalSpent / Math.max(grouped.length, 1)) : 0;
+  const totalSpent = useMemo(() => filtered.reduce((sum, e) => sum + Number(e.amount ?? 0), 0), [filtered]);
+  const avgPerDay  = filtered.length > 0
+    ? Math.round(totalSpent / Math.max(grouped.length, 1))
+    : 0;
 
   return (
     <SafeAreaView style={s.screen}>
@@ -140,11 +191,11 @@ export default function HistoryScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* ── Summary strip ── */}
+      {/* ── Summary Strip ── */}
       <View style={s.summaryStrip}>
         {[
-          { label: 'Transactions', value: String(filtered.length), style: s.summaryValue },
-          { label: 'Total Spent',  value: formatCurrency(totalSpent), style: s.summaryValueRed },
+          { label: 'Transactions', value: String(filtered.length),    style: s.summaryValue     },
+          { label: 'Total Spent',  value: formatCurrency(totalSpent), style: s.summaryValueRed  },
           { label: 'Avg / Day',    value: formatCurrency(avgPerDay),  style: s.summaryValueTeal },
         ].map(({ label, value, style }, i, arr) => (
           <React.Fragment key={label}>
@@ -157,7 +208,7 @@ export default function HistoryScreen() {
         ))}
       </View>
 
-      {/* ── Filter bar ── */}
+      {/* ── Filter Bar ── */}
       <View style={s.filterWrap}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={s.filterContent}>
@@ -175,7 +226,7 @@ export default function HistoryScreen() {
         </ScrollView>
       </View>
 
-      {/* ── Expense list ── */}
+      {/* ── Expense List ── */}
       {error ? (
         <ErrorMessage message={error} action={{ label: 'Retry', onPress: refresh }} />
       ) : filtered.length === 0 ? (
@@ -185,49 +236,62 @@ export default function HistoryScreen() {
           message={`No ${activeFilter === 'All' ? '' : activeFilter + ' '}expenses found.`}
         />
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={s.scrollContent}
+        >
           {grouped.map(({ label, data }) => (
             <View key={label} style={s.dateGroup}>
               <Text style={s.dateGroupLabel}>{label}</Text>
-              {data.map(expense => (
-                <TouchableOpacity
-                  key={expense.id}
-                  onPress={() => setSelectedExpense(expense)}
-                  activeOpacity={0.7}
-                >
+              {data.map(expense => {
+                const cat   = safeCategory(expense.category);
+                const color = CATEGORY_COLORS[cat] ?? '#6B7280';
+                return (
                   <ExpenseCard
-                    id={expense.id}
-                    title={expense.title}
-                    amount={expense.amount}
-                    category={expense.category}
-                    date={expense.date}
-                    icon={expense.icon}
-                    color={expense.color}
+                    key={String(expense.id)}
+                    id={String(expense.id)}
+                    title={String(expense.description ?? '')}
+                    category={cat}
+                    amount={Number(expense.amount ?? 0)}
+                    date={String(expense.timestamp ?? '')}
+                    color={color}
+                    onPress={() => setSelectedExpense(expense)}
                   />
-                </TouchableOpacity>
-              ))}
+                );
+              })}
             </View>
           ))}
         </ScrollView>
       )}
 
       {/* ── Sort Modal ── */}
-      <Modal visible={showSortModal} transparent animationType="slide" onRequestClose={() => setShowSortModal(false)}>
+      <Modal
+        visible={showSortModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowSortModal(false)}
+      >
         <TouchableOpacity style={m.overlay} activeOpacity={1} onPress={() => setShowSortModal(false)}>
           <TouchableOpacity activeOpacity={1} style={m.sheet}>
             <View style={m.handle} />
             <Text style={m.sheetTitle}>Sort By</Text>
+
             {SORT_OPTIONS.map(opt => (
               <TouchableOpacity
                 key={opt.value}
                 style={[m.sortOption, tempSort === opt.value && m.sortOptionActive]}
-                onPress={() => setTempSort(opt.value as SortOption)}
+                onPress={() => setTempSort(opt.value)}
                 activeOpacity={0.7}
               >
-                <Text style={[m.sortText, tempSort === opt.value && m.sortTextActive]}>{opt.label}</Text>
-                {tempSort === opt.value && <Ionicons name="checkmark" size={18} color="#00b4a6" />}
+                <Text style={[m.sortText, tempSort === opt.value && m.sortTextActive]}>
+                  {opt.label}
+                </Text>
+                {tempSort === opt.value && (
+                  <Ionicons name="checkmark" size={18} color="#00b4a6" />
+                )}
               </TouchableOpacity>
             ))}
+
             <TouchableOpacity
               style={m.applyBtn}
               onPress={() => { setActiveSort(tempSort); setShowSortModal(false); }}
@@ -235,7 +299,11 @@ export default function HistoryScreen() {
             >
               <Text style={m.applyText}>Apply</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={m.cancelBtn} onPress={() => setShowSortModal(false)} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={m.cancelBtn}
+              onPress={() => setShowSortModal(false)}
+              activeOpacity={0.7}
+            >
               <Text style={m.cancelText}>Cancel</Text>
             </TouchableOpacity>
           </TouchableOpacity>
@@ -243,34 +311,72 @@ export default function HistoryScreen() {
       </Modal>
 
       {/* ── Expense Detail Modal ── */}
-      <Modal visible={!!selectedExpense} transparent animationType="slide" onRequestClose={() => setSelectedExpense(null)}>
+      <Modal
+        visible={!!selectedExpense}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedExpense(null)}
+      >
         <TouchableOpacity style={m.overlay} activeOpacity={1} onPress={() => setSelectedExpense(null)}>
           <TouchableOpacity activeOpacity={1} style={m.sheet}>
             <View style={m.handle} />
-            {selectedExpense && (
-              <>
-                <View style={[m.detailIconWrap, { backgroundColor: selectedExpense.color + '22' }]}>
-                  <Ionicons name={selectedExpense.icon as any} size={36} color={selectedExpense.color} />
-                </View>
-                <Text style={m.detailTitle}>{selectedExpense.title}</Text>
-                <Text style={m.detailAmount}>-{formatCurrency(selectedExpense.amount)}</Text>
-                <View style={m.divider} />
-                {[
-                  { label: 'Category',       value: selectedExpense.category },
-                  { label: 'Date',           value: formatDate(selectedExpense.date) },
-                  { label: 'Transaction ID', value: `#${selectedExpense.id}` },
-                ].map(({ label, value }) => (
-                  <View key={label} style={m.detailRow}>
-                    <Text style={m.detailLabel}>{label}</Text>
-                    <Text style={m.detailValue}>{value}</Text>
+
+            {selectedExpense && (() => {
+              const cat      = safeCategory(selectedExpense.category);
+              const color    = CATEGORY_COLORS[cat] ?? '#6B7280';
+              const catLabel = capitalize(cat);
+              const title    = String(selectedExpense.description ?? '—');
+              const dateStr  = String(selectedExpense.timestamp ?? '');
+              const txId     = String(selectedExpense.id ?? '—');
+
+              return (
+                <>
+                  <View style={[m.detailIconWrap, { backgroundColor: color + '22' }]}>
+                    <Ionicons name="receipt-outline" size={36} color={color} />
                   </View>
-                ))}
-                <View style={m.divider} />
-                <TouchableOpacity style={m.closeBtn} onPress={() => setSelectedExpense(null)} activeOpacity={0.8}>
-                  <Text style={m.closeText}>Close</Text>
-                </TouchableOpacity>
-              </>
-            )}
+
+                  <Text style={m.detailTitle}>{title}</Text>
+                  <Text style={m.detailAmount}>
+                    -{formatCurrency(Number(selectedExpense.amount ?? 0))}
+                  </Text>
+
+                  <View style={m.divider} />
+
+                  {[
+                    { label: 'Category',       value: catLabel },
+                    { label: 'Date',           value: formatDateLong(dateStr) },
+                    { label: 'Transaction ID', value: `#${txId}` },
+                  ].map(({ label, value }) => (
+                    <View key={label} style={m.detailRow}>
+                      <Text style={m.detailLabel}>{label}</Text>
+                      <Text style={m.detailValue}>{value}</Text>
+                    </View>
+                  ))}
+
+                  <View style={m.divider} />
+
+                  <TouchableOpacity
+                    style={[m.deleteBtn, isDeleting && { opacity: 0.6 }]}
+                    onPress={() => { if (!isDeleting) handleDelete(selectedExpense); }}
+                    activeOpacity={0.8}
+                    disabled={isDeleting}
+                  >
+                    <Ionicons name="trash-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+                    <Text style={m.deleteText}>
+                      {isDeleting ? 'Deleting...' : 'Delete Expense'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={m.closeBtn}
+                    onPress={() => setSelectedExpense(null)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={m.closeText}>Close</Text>
+                  </TouchableOpacity>
+                </>
+              );
+            })()}
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
@@ -299,6 +405,8 @@ const m = StyleSheet.create({
   detailRow:        { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 },
   detailLabel:      { fontSize: 14, color: '#999', fontWeight: '500' },
   detailValue:      { fontSize: 14, color: '#1a1a2e', fontWeight: '600', maxWidth: '60%', textAlign: 'right' },
+  deleteBtn:        { flexDirection: 'row', backgroundColor: '#e53935', borderRadius: 14, paddingVertical: 15, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  deleteText:       { color: '#fff', fontSize: 16, fontWeight: '700' },
   closeBtn:         { backgroundColor: '#1a1a2e', borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 8 },
   closeText:        { color: '#fff', fontSize: 16, fontWeight: '700' },
 });
