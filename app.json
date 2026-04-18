@@ -34,8 +34,17 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     }
+  ],
+  [
+    "expo-image-picker",
+    {
+      "photosPermission": "Allow SpendWise to access your photos.",
+      "cameraPermission": "Allow SpendWise to use your camera."
+    }
   ]
 ],
+  
+
     "experiments": {
       "typedRoutes": false,
       "reactCompiler": false
@@ -48,3 +57,5 @@
     }
   }
 }
+
+

@@ -2,21 +2,21 @@ import { Colors, Semantic } from '@constants/colors';
 import { BorderRadius, Shadow, Spacing } from '@constants/spacing';
 import { Typography } from '@constants/typography';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Animated,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Animated, Image, KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../hooks/useAuth';
@@ -65,6 +65,7 @@ export default function EditProfileScreen() {
   const [focusedField,    setFocusedField]    = useState<string | null>(null);
   const [showTypePicker,  setShowTypePicker]  = useState(false);
   const [showCyclePicker, setShowCyclePicker] = useState(false);
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const saveScale = useRef(new Animated.Value(1)).current;
 
   // ── Validation ──────────────────────────────────────────────────────────────
@@ -81,8 +82,41 @@ export default function EditProfileScreen() {
 
   // ── Image picker (install expo-image-picker to enable) ─────────────────────
   const showPhotoOptions = () => {
-    Alert.alert('Coming Soon', 'Run: npx expo install expo-image-picker\nto enable photo uploads.');
-  };
+  Alert.alert('Change Photo', 'Choose a source', [
+    { text: 'Camera', onPress: openCamera },
+    { text: 'Photo Library', onPress: openLibrary },
+    { text: 'Cancel', style: 'cancel' },
+  ]);
+};
+
+const openLibrary = async () => {
+  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (status !== 'granted') {
+    Alert.alert('Permission needed', 'Please allow access to your photo library in Settings.');
+    return;
+  }
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    allowsEditing: true,
+    aspect: [1, 1],
+    quality: 0.8,
+  });
+  if (!result.canceled) setAvatarUri(result.assets[0].uri);
+};
+
+const openCamera = async () => {
+  const { status } = await ImagePicker.requestCameraPermissionsAsync();
+  if (status !== 'granted') {
+    Alert.alert('Permission needed', 'Please allow camera access in Settings.');
+    return;
+  }
+  const result = await ImagePicker.launchCameraAsync({
+    allowsEditing: true,
+    aspect: [1, 1],
+    quality: 0.8,
+  });
+  if (!result.canceled) setAvatarUri(result.assets[0].uri);
+};
 
   // ── Save ────────────────────────────────────────────────────────────────────
   const handleSave = async () => {
@@ -151,9 +185,16 @@ export default function EditProfileScreen() {
           <FadeSlide delay={40}>
             <View style={s.avatarSection}>
               <TouchableOpacity onPress={showPhotoOptions} activeOpacity={0.85} style={s.avatarWrap}>
-                <View style={s.avatarFallback}>
-                  <Text style={s.avatarInitials}>{initials}</Text>
-                </View>
+                {avatarUri ? (
+  <Image
+    source={{ uri: avatarUri }}
+    style={[s.avatarFallback, { borderWidth: 2.5, borderColor: Semantic.primary }]}
+  />
+) : (
+  <View style={s.avatarFallback}>
+    <Text style={s.avatarInitials}>{initials}</Text>
+  </View>
+)}
                 <View style={s.cameraBadge}>
                   <Ionicons name="camera" size={12} color={Colors.white} />
                 </View>
