@@ -3,16 +3,16 @@ import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Animated,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StatusBar,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Animated,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StatusBar,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
 import { Colors, authStyles as s } from '../../styles/authStyles';
@@ -149,18 +149,23 @@ export default function RegisterScreen() {
   const handleRegister = async () => {
     if (!validateForm()) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    // Generate username from email consistently
+    const username = formData.email.split('@')[0].toLowerCase();
+
     try {
-      await register({
-        name:        formData.name,
-        email:       formData.email,
-        password:    formData.password,
-        incomeType:  formData.incomeType,
-        incomeCycle: formData.incomeCycle,
-      });
+        await register({
+            name:        formData.name,
+            email:       formData.email,
+            username:    username,        // ← consistent username
+            password:    formData.password,
+            incomeType:  formData.incomeType,
+            incomeCycle: formData.incomeCycle,
+        });
     } catch (err) {
-      console.error('Registration failed:', err);
+        console.error('Registration failed:', err);
     }
-  };
+};
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (

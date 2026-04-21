@@ -4,29 +4,24 @@ import api from './api';
 export const insightsService = {
 
   getInsights: async (): Promise<MLInsights> => {
-    const res = await api.get('/insights/');
+    const res = await api.get('/insights');
+    const d   = res.data;
     return {
       userId:             '',
-      userCluster:        res.data.user_cluster,
-      clusterDescription: res.data.cluster_description,
-      dailyBurnRate:      res.data.daily_burn_rate,
-      daysRemaining:      res.data.days_remaining,
-      riskLevel:          res.data.risk_level,
+      userCluster:        d.user_cluster        ?? 'Balanced',
+      clusterDescription: d.cluster_description ?? '',
+      dailyBurnRate:      d.daily_burn_rate      ?? 0,
+      daysRemaining:      d.days_remaining       ?? 0,
+      riskLevel:          d.risk_level           ?? 'safe',
       predictions:        [],
-      recommendations:    res.data.recommendations.map((r: string, i: number) => ({
-        id:          String(i),
-        type:        'spending-control',
-        title:       r,
-        description: r,
-        priority:    'medium',
-        createdAt:   '',
-      })),
-      lastUpdated: res.data.last_updated,
+      // FastAPI /insights does not return recommendations yet — safe empty fallback
+      recommendations:    [],
+      lastUpdated:        d.last_updated         ?? '',
     };
   },
 
   getSmartPurchaseDecision: async (request: SmartPurchaseRequest): Promise<SmartPurchaseDecision> => {
-    const res = await api.post('/smart-purchase/', {
+    const res = await api.post('/smart-purchase', {
       amount:      request.amount,
       category:    request.category,
       description: request.description ?? '',
@@ -38,22 +33,22 @@ export const insightsService = {
       suggestions:                 res.data.suggestions,
       currentBalance:              res.data.current_balance,
       remainingBudget:             res.data.remaining_budget,
-      estimatedDaysUntilShortfall: res.data.estimated_days_until_shortfall,
+      estimatedDaysUntilShortfall: res.data.estimated_days_until_shortfall ?? null,
     };
   },
 
   getRecommendations: async (): Promise<string[]> => {
-    const res = await api.get('/insights/');
+    const res = await api.get('/insights');
     return res.data.recommendations ?? [];
   },
 
   getUserCluster: async (): Promise<string> => {
-    const res = await api.get('/insights/');
+    const res = await api.get('/insights');
     return res.data.user_cluster ?? 'Balanced';
   },
 
   getPredictions: async (): Promise<any[]> => {
-    const res = await api.get('/insights/');
+    const res = await api.get('/insights');
     return res.data.weekly_trend ?? [];
   },
 };

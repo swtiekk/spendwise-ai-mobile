@@ -4,7 +4,8 @@ export const AppConfig = {
   API_TIMEOUT: 10000,
   MIN_PASSWORD_LENGTH: 6,
   MAX_DESCRIPTION_LENGTH: 100,
-  BASE_URL: 'http://192.168.1.30:8000/api',
+  BASE_URL: 'http://10.134.99.116:8000',
+
 } as const;
 
 export const RiskThresholds = {

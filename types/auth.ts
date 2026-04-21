@@ -3,19 +3,21 @@
  */
 
 export interface LoginCredentials {
-  email: string;
-  password: string;
+  username?: string;
+  email?:    string;   // ← add this
+  password:  string;
 }
 
 export interface RegisterCredentials extends LoginCredentials {
-  name: string;
-  incomeType: 'salary' | 'allowance' | 'freelance' | 'other';
+  name:        string;
+  email:       string;        // ← ADD THIS
+  incomeType:  'salary' | 'allowance' | 'freelance' | 'other';
   incomeCycle: 'weekly' | 'biweekly' | 'monthly';
 }
 
 export interface User {
   id: string;
-  email: string;
+  username: string; // ✅ changed
   name: string;
   incomeType: 'salary' | 'allowance' | 'freelance' | 'other';
   incomeCycle: 'weekly' | 'biweekly' | 'monthly';
