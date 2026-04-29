@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Messages } from '../constants/messages';
+import { authService } from '../services/authService';
 import { expenseService } from '../services/expenseService';
 import { ExpenseStats } from '../types/expense';
 
@@ -16,6 +17,10 @@ interface DashboardData {
   riskLevel: 'safe' | 'caution' | 'danger';
   totalSpent: number;
   categories: CategoryItem[];
+  incomeAmount: number;
+  incomeType: string;
+  incomeCycle: string;
+  nextIncomeDate: string;
 }
 
 /**
@@ -35,20 +40,38 @@ export const useDashboard = () => {
       setIsLoading(true);
       setError(null);
 
-      const stats: ExpenseStats = await expenseService.getExpenseStats();
+      const [stats, user] = await Promise.all([
+        expenseService.getExpenseStats(),
+        authService.getCurrentUser()
+      ]);
       
+      // Calculate days remaining based on next pay date
+      let daysRemaining = 0;
+      if (user?.nextIncomeDate) {
+        const nextPay = new Date(user.nextIncomeDate);
+        const today = new Date();
+        const diff = nextPay.getTime() - today.getTime();
+        daysRemaining = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+      } else {
+        daysRemaining = stats.daysRemaining; // Fallback
+      }
+
       // Transform stats to dashboard format
       const dashboardData: DashboardData = {
         balance: stats.balance,
-        daysRemaining: calculateDaysRemaining(stats.balance, stats.averageDailySpend),
-        riskLevel: calculateRiskLevel(stats.balance),
+        daysRemaining,
+        riskLevel: calculateRiskLevel(stats.balance, user?.incomeAmount || 0),
         totalSpent: stats.totalExpenses,
         categories: Object.entries(stats.categoryBreakdown).map(([category, amount]) => ({
           category: getCategoryLabel(category),
           amount: amount as number,
-          percentage: Math.round(((amount as number) / stats.totalExpenses) * 100),
-          icon: getCategoryIcon(category),  // ✅ ADDED
+          percentage: stats.totalExpenses > 0 ? Math.round(((amount as number) / stats.totalExpenses) * 100) : 0,
+          icon: getCategoryIcon(category),
         })),
+        incomeAmount: user?.incomeAmount || 0,
+        incomeType: user?.incomeType || 'other',
+        incomeCycle: user?.incomeCycle || 'monthly',
+        nextIncomeDate: user?.nextIncomeDate || '',
       };
 
       setData(dashboardData);
@@ -77,14 +100,11 @@ export const useDashboard = () => {
 // Helper Functions
 // ============================================================================
 
-function calculateDaysRemaining(balance: number, dailyBurnRate: number): number {
-  if (dailyBurnRate === 0) return Infinity;
-  return Math.max(0, Math.floor(balance / dailyBurnRate));
-}
-
-function calculateRiskLevel(balance: number): 'safe' | 'caution' | 'danger' {
-  if (balance > 5000) return 'safe';
-  if (balance > 1000) return 'caution';
+function calculateRiskLevel(balance: number, income: number): 'safe' | 'caution' | 'danger' {
+  if (income === 0) return balance > 0 ? 'caution' : 'danger';
+  const ratio = balance / income;
+  if (ratio > 0.4) return 'safe';
+  if (ratio > 0.1) return 'caution';
   return 'danger';
 }
 

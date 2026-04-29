@@ -1,4 +1,4 @@
-import { mockExpenses } from '@/data/mockData';
+import { ExpenseCategories } from '../constants/categories';
 import { PaginatedResponse } from '../types/api';
 import {
     CreateExpenseRequest,
@@ -7,11 +7,14 @@ import {
     ExpenseStats,
     Income,
 } from '../types/expense';
+import { authService } from './authService';
 
 // Local mutable copy for add/update/delete
-let expenses: Expense[] = [...mockExpenses] as unknown as Expense[];
+let expenses: Expense[] = [];
 
 export const expenseService = {
+  // Added helper to get raw expenses for internal calculations (e.g., insights)
+  _getRawExpenses: (): Expense[] => [...expenses],
 
   createExpense: async (data: CreateExpenseRequest): Promise<Expense> => {
     await new Promise((r) => setTimeout(r, 600));
@@ -29,13 +32,12 @@ export const expenseService = {
     const sliced = expenses.slice(start, start + pageSize);
     const totalPages = Math.ceil(expenses.length / pageSize);
     return {
-      items:           sliced,               // ✅ renamed from `data` → `items` (matches PaginatedResponse)
+      items:           sliced,
       total:           expenses.length,
       page,
       pageSize,
-      hasNextPage:     page < totalPages,    // ✅ added: required by PaginatedResponse
-      hasPreviousPage: page > 1,             // ✅ added: required by PaginatedResponse
-      // ❌ removed: totalPages — not on PaginatedResponse type
+      hasNextPage:     page < totalPages,
+      hasPreviousPage: page > 1,
     };
   },
 
@@ -64,15 +66,25 @@ export const expenseService = {
 
   getExpenseStats: async (): Promise<ExpenseStats> => {
     await new Promise((r) => setTimeout(r, 400));
+    
+    const user = await authService.getCurrentUser();
+    const totalIncome = user?.incomeAmount || 0;
+    
     const total = expenses.reduce((sum, e) => sum + (e as any).amount, 0);
+    
+    // Calculate category breakdown for stats
+    const breakdown: Record<string, number> = {};
+    expenses.forEach(e => {
+      breakdown[e.category] = (breakdown[e.category] || 0) + (e as any).amount;
+    });
+
     return {
-      totalExpenses:     total,              // ✅ renamed from totalSpent → totalExpenses (matches ExpenseStats)
-      totalIncome:       18000,
-      balance:           18000 - total,
-      averageDailySpend: total / 30,         // ✅ added: required by ExpenseStats
-      daysRemaining:     14,                 // ✅ added: required by ExpenseStats
-      categoryBreakdown: {} as any,          // ✅ added: required by ExpenseStats
-      // ❌ removed: expenseCount — not on ExpenseStats type
+      totalExpenses:     total,
+      totalIncome:       totalIncome,
+      balance:           totalIncome - total,
+      averageDailySpend: total / 30,
+      daysRemaining:     14,
+      categoryBreakdown: breakdown,
     };
   },
 

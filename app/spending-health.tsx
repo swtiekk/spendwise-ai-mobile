@@ -33,6 +33,7 @@ export default function SpendingHealthScreen() {
   const riskLevel = insights?.riskLevel || 'medium';
   const cfg = RISK_CONFIG[riskLevel as keyof typeof RISK_CONFIG] || RISK_CONFIG.medium;
   const breakdown = insights?.categoryBreakdown || [];
+  const totalSpent = breakdown.reduce((sum, cat) => sum + cat.value, 0);
 
   const formatAmount = (amount: number) =>
     '₱' + amount.toLocaleString('en-PH', { minimumFractionDigits: 0 });
@@ -106,11 +107,19 @@ export default function SpendingHealthScreen() {
 
           <View style={{ backgroundColor: Semantic.surface, borderRadius: 24, padding: 20 }}>
             {breakdown.length === 0 ? (
-              <Text style={{ textAlign: 'center', color: Semantic.textMuted, padding: 20 }}>
-                No spending data available for this cycle.
-              </Text>
+              <View style={{ alignItems: 'center', padding: 20 }}>
+                <Text style={{ fontSize: 32, fontWeight: '800', color: Semantic.text, marginBottom: 8 }}>₱0</Text>
+                <Text style={{ textAlign: 'center', color: Semantic.textMuted, fontWeight: '500' }}>
+                  No transaction records found in the database.
+                </Text>
+              </View>
             ) : (
-              breakdown.map((cat, index) => (
+              <>
+                <View style={{ marginBottom: 24, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: Semantic.secondaryBg, paddingBottom: 16 }}>
+                  <Text style={{ color: Semantic.textMuted, fontWeight: '700', fontSize: 12, letterSpacing: 0.5, marginBottom: 4 }}>TOTAL SPENT</Text>
+                  <Text style={{ color: Semantic.text, fontWeight: '800', fontSize: 28 }}>{formatAmount(totalSpent)}</Text>
+                </View>
+                {breakdown.map((cat, index) => (
                 <View 
                   key={cat.id} 
                   style={{ 
@@ -143,7 +152,8 @@ export default function SpendingHealthScreen() {
                     </Text>
                   </View>
                 </View>
-              ))
+              ))}
+              </>
             )}
           </View>
         </View>

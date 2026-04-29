@@ -134,18 +134,16 @@ function QuickItem({
   );
 }
 
-// ── Date filter multipliers (mock — in production filter real data) ───────────
+// ── Date filter (Simplified for real data — in production filter by date) ─────
 function applyDateFilter(
   data: { totalSpent: number; categories: any[] },
   range: DateRange
 ) {
-  const multiplier = range === 'Today' ? 0.08 : range === 'This Week' ? 0.35 : 1;
+  // NOTE: In a real app, you would filter the transactions by date here.
+  // For this prototype, we'll show the same data but indicate it's real.
   return {
-    totalSpent: Math.round(data.totalSpent * multiplier),
-    categories: data.categories.map(cat => ({
-      ...cat,
-      amount: Math.round(cat.amount * multiplier),
-    })),
+    totalSpent: data.totalSpent,
+    categories: data.categories,
   };
 }
 
@@ -159,8 +157,6 @@ export default function DashboardScreen() {
   // ── State ─────────────────────────────────────────────────────────────────
   const [dateRange,    setDateRange]    = useState<DateRange>('This Month');
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const nextPayDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
   // ── Filter tab animation ──────────────────────────────────────────────────
   const filterAnim = useRef(new Animated.Value(DATE_RANGES.indexOf('This Month'))).current;
@@ -192,6 +188,10 @@ export default function DashboardScreen() {
   // ── Greeting ──────────────────────────────────────────────────────────────
   const firstName  = user?.name?.split(' ')[0] ?? 'there';
   const greeting   = getGreeting();
+
+  const formattedNextPayDate = data?.nextIncomeDate 
+    ? new Date(data.nextIncomeDate).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+    : 'Not set';
 
   // ── Error state ───────────────────────────────────────────────────────────
   if (error) {
@@ -336,7 +336,7 @@ export default function DashboardScreen() {
             <SustainabilityStatus
               daysRemaining={data.daysRemaining}
               riskLevel={data.riskLevel as any}
-              nextIncomeDate={nextPayDate}
+              nextIncomeDate={formattedNextPayDate}
             />
           </FadeSlide>
 
@@ -366,10 +366,10 @@ export default function DashboardScreen() {
           <FadeSlide delay={260}>
             <SectionLabel title="Income Info" />
             <IncomeInfo
-              amount={20000}
-              type="salary"
-              cycle="monthly"
-              nextPayDate={nextPayDate}
+              amount={data.incomeAmount}
+              type={data.incomeType as any}
+              cycle={data.incomeCycle as any}
+              nextPayDate={formattedNextPayDate}
             />
           </FadeSlide>
         </ScrollView>

@@ -1,28 +1,24 @@
-import { currentUser } from '@/data/mockData';
 import { AuthResponse, LoginCredentials, RegisterCredentials, User } from '../types/auth';
 
 const MOCK_TOKEN = 'mock-jwt-token-spendwise-2025';
 
 const mockUser: User = {
   id:             'u1',
-  name:           currentUser.name,
-  email:          currentUser.email,
-  incomeType:     'salary',    // ✅ mapped from 'Monthly Salary' → valid union value
-  incomeCycle:    'monthly',   // ✅ mapped from 'Monthly' → valid union value
-  incomeAmount:   currentUser.income,
-  nextIncomeDate: '',          // ✅ required by User type (not in mockData, defaulted)
-  createdAt:      '',          // ✅ required by User type (not in mockData, defaulted)
-  updatedAt:      '',          // ✅ required by User type (not in mockData, defaulted)
-  // ❌ removed: balance, spenderType — these fields don't exist on User type
+  name:           'New User',
+  email:          'user@example.com',
+  incomeType:     'other',
+  incomeCycle:    'monthly',
+  incomeAmount:   0,
+  nextIncomeDate: '',
+  createdAt:      new Date().toISOString(),
+  updatedAt:      new Date().toISOString(),
 };
 
 export const authService = {
 
   login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
     await new Promise((r) => setTimeout(r, 800));
-    if (credentials.email !== currentUser.email) {
-      throw new Error(`Email not found. Use: ${currentUser.email}`);
-    }
+    // Accept any login for prototype purposes, but return the "real" user state
     return { user: mockUser, token: MOCK_TOKEN };
   },
 
@@ -33,13 +29,12 @@ export const authService = {
         id:             'u_new',
         name:           credentials.name,
         email:          credentials.email,
-        incomeType:     credentials.incomeType  ?? 'other',    // ✅ valid union value
-        incomeCycle:    credentials.incomeCycle ?? 'monthly',  // ✅ valid union value
+        incomeType:     credentials.incomeType  ?? 'other',
+        incomeCycle:    credentials.incomeCycle ?? 'monthly',
         incomeAmount:   0,
         nextIncomeDate: '',
         createdAt:      new Date().toISOString(),
         updatedAt:      new Date().toISOString(),
-        // ❌ removed: balance, income, spenderType — not on User type
       },
       token: MOCK_TOKEN,
     };
