@@ -10,16 +10,22 @@ export const useUser = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError]         = useState<string | null>(null);
 
+  console.log('🟣 useUser hook - authUser:', authUser);
+
   useEffect(() => {
-    if (authUser && !profile) loadProfile();
+    console.log('🟠 useEffect fired, authUser:', authUser);
+    if (authUser) loadProfile();
   }, [authUser]);
 
   const loadProfile = useCallback(async () => {
+    console.log('🔵 loadProfile called, authUser:', authUser);
     try {
       setIsLoading(true);
       setError(null);
 
-      const res = await api.get('/profile/');
+      console.log('🟡 calling GET /profile...');
+      const res = await api.get('/profile');
+      console.log('🟢 profile response:', res.data);
 
       const fetchedProfile: UserProfile = {
         id:             authUser?.id    ?? '',
@@ -44,6 +50,7 @@ export const useUser = () => {
       setProfile(fetchedProfile);
       setSavingsGoals([]);
     } catch (err: any) {
+      console.log('🔴 profile error:', err?.response?.status, err?.message);
       setError(err?.message ?? 'Failed to load profile');
     } finally {
       setIsLoading(false);
@@ -55,7 +62,7 @@ export const useUser = () => {
       try {
         setIsLoading(true);
         setError(null);
-        await api.patch('/profile/', {
+        await api.patch('/profile', {
           ...(data.incomeAmount !== undefined && { income_amount: data.incomeAmount }),
           ...(data.incomeType   !== undefined && { income_type:   data.incomeType }),
           ...(data.incomeCycle  !== undefined && { income_cycle:  data.incomeCycle }),
