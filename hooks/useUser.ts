@@ -4,32 +4,44 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useUserStore } from '../store/useUserStore';
 import { UserProfile } from '../types/user';
 
+// ── Simple global event emitter for cross-hook communication ──────────────────
+type Listener = () => void;
+const profileUpdateListeners: Set<Listener> = new Set();
+
+export const onProfileUpdated = (fn: Listener) => {
+  profileUpdateListeners.add(fn);
+  return () => profileUpdateListeners.delete(fn);
+};
+
+const emitProfileUpdated = () => {
+  profileUpdateListeners.forEach(fn => fn());
+};
+
+// ── Hook ──────────────────────────────────────────────────────────────────────
 export const useUser = () => {
   const authUser = useAuthStore((s) => s.user);
-  const { profile, savingsGoals, setProfile, setSavingsGoals, updateProfile } = useUserStore();
+
+  const {
+    profile,
+    savingsGoals,
+    setProfile,
+    setSavingsGoals,
+    updateProfile,
+  } = useUserStore();
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError]         = useState<string | null>(null);
 
-  console.log('🟣 useUser hook - authUser:', authUser);
-
-  useEffect(() => {
-    console.log('🟠 useEffect fired, authUser:', authUser);
-    if (authUser) loadProfile();
-  }, [authUser]);
-
   const loadProfile = useCallback(async () => {
-    console.log('🔵 loadProfile called, authUser:', authUser);
     try {
       setIsLoading(true);
       setError(null);
 
-      console.log('🟡 calling GET /profile...');
       const res = await api.get('/profile');
-      console.log('🟢 profile response:', res.data);
 
       const fetchedProfile: UserProfile = {
         id:             authUser?.id    ?? '',
-        email:          authUser?.email ?? '',
+        email:          (authUser as any)?.email ?? '',
         name:           authUser?.name  ?? '',
         incomeType:     res.data.income_type      ?? 'salary',
         incomeCycle:    res.data.income_cycle     ?? 'monthly',
@@ -50,31 +62,46 @@ export const useUser = () => {
       setProfile(fetchedProfile);
       setSavingsGoals([]);
     } catch (err: any) {
-      console.log('🔴 profile error:', err?.response?.status, err?.message);
       setError(err?.message ?? 'Failed to load profile');
     } finally {
       setIsLoading(false);
     }
   }, [authUser, setProfile, setSavingsGoals]);
 
+  useEffect(() => {
+    if (authUser) loadProfile();
+  }, [authUser, loadProfile]);
+
   const editProfile = useCallback(
     async (data: Partial<UserProfile>) => {
       try {
         setIsLoading(true);
         setError(null);
+
         await api.patch('/profile', {
-          ...(data.incomeAmount !== undefined && { income_amount: data.incomeAmount }),
-          ...(data.incomeType   !== undefined && { income_type:   data.incomeType }),
-          ...(data.incomeCycle  !== undefined && { income_cycle:  data.incomeCycle }),
+          ...(data.incomeAmount   !== undefined && { income_amount:    data.incomeAmount   }),
+          ...(data.incomeType     !== undefined && { income_type:      data.incomeType     }),
+          ...(data.incomeCycle    !== undefined && { income_cycle:     data.incomeCycle    }),
+          ...(data.nextIncomeDate !== undefined && { next_income_date: data.nextIncomeDate }),
+          ...(data.savingsGoal    !== undefined && { savings_goal:     data.savingsGoal    }),
+          ...(data.name           !== undefined && { first_name:       data.name           }),
         });
+
         updateProfile(data);
+
+        // Reload latest profile from backend
+        await loadProfile();
+
+        // ── Notify dashboard and insights to refresh ──────
+        emitProfileUpdated();
+
       } catch (err: any) {
         setError(err?.message ?? 'Failed to update profile');
       } finally {
         setIsLoading(false);
       }
     },
-    [updateProfile]
+    [updateProfile, loadProfile]
   );
 
   return {

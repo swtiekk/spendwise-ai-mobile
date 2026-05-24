@@ -26,7 +26,14 @@ import { useUser } from '../hooks/useUser';
 const INCOME_TYPES: string[]  = ['salary', 'allowance', 'freelance', 'other'];
 const INCOME_CYCLES: string[] = ['weekly', 'biweekly', 'monthly'];
 
-// ─── Fade-slide (same pattern as profile.tsx) ────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function getOrdinal(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return s[(v - 20) % 10] || s[v] || s[0];
+}
+
+// ─── Fade-slide ───────────────────────────────────────────────────────────────
 function FadeSlide({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   const opacity    = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(14)).current;
@@ -45,11 +52,16 @@ function FadeSlide({ children, delay = 0 }: { children: React.ReactNode; delay?:
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export default function EditProfileScreen() {
-  const router       = useRouter();
-  const { user }     = useAuth();
+  const router                   = useRouter();
+  const { user }                 = useAuth();
   const { profile, editProfile } = useUser();
 
   const src = profile ?? user;
+
+  // ── Parse existing next_income_date day ──────────────────
+  const existingDay = src?.nextIncomeDate
+    ? new Date(src.nextIncomeDate).getDate()
+    : 1;
 
   const [form, setForm] = useState({
     name:         src?.name         ?? '',
@@ -60,15 +72,17 @@ export default function EditProfileScreen() {
     incomeAmount: String(src?.incomeAmount ?? ''),
   });
 
+  const [selectedDay,     setSelectedDay]     = useState<number>(existingDay);
+  const [showDatePicker,  setShowDatePicker]  = useState(false);
   const [errors,          setErrors]          = useState<Record<string, string>>({});
   const [isSaving,        setIsSaving]        = useState(false);
   const [focusedField,    setFocusedField]    = useState<string | null>(null);
   const [showTypePicker,  setShowTypePicker]  = useState(false);
   const [showCyclePicker, setShowCyclePicker] = useState(false);
-  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [avatarUri,       setAvatarUri]       = useState<string | null>(null);
   const saveScale = useRef(new Animated.Value(1)).current;
 
-  // ── Validation ──────────────────────────────────────────────────────────────
+  // ── Validation ────────────────────────────────────────────
   const validate = () => {
     const e: Record<string, string> = {};
     if (!form.name.trim())  e.name  = 'Name is required';
@@ -80,45 +94,45 @@ export default function EditProfileScreen() {
     return Object.keys(e).length === 0;
   };
 
-  // ── Image picker (install expo-image-picker to enable) ─────────────────────
+  // ── Image picker ──────────────────────────────────────────
   const showPhotoOptions = () => {
-  Alert.alert('Change Photo', 'Choose a source', [
-    { text: 'Camera', onPress: openCamera },
-    { text: 'Photo Library', onPress: openLibrary },
-    { text: 'Cancel', style: 'cancel' },
-  ]);
-};
+    Alert.alert('Change Photo', 'Choose a source', [
+      { text: 'Camera',        onPress: openCamera },
+      { text: 'Photo Library', onPress: openLibrary },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
 
-const openLibrary = async () => {
-  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (status !== 'granted') {
-    Alert.alert('Permission needed', 'Please allow access to your photo library in Settings.');
-    return;
-  }
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    allowsEditing: true,
-    aspect: [1, 1],
-    quality: 0.8,
-  });
-  if (!result.canceled) setAvatarUri(result.assets[0].uri);
-};
+  const openLibrary = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Please allow access to your photo library in Settings.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes:    ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect:        [1, 1],
+      quality:       0.8,
+    });
+    if (!result.canceled) setAvatarUri(result.assets[0].uri);
+  };
 
-const openCamera = async () => {
-  const { status } = await ImagePicker.requestCameraPermissionsAsync();
-  if (status !== 'granted') {
-    Alert.alert('Permission needed', 'Please allow camera access in Settings.');
-    return;
-  }
-  const result = await ImagePicker.launchCameraAsync({
-    allowsEditing: true,
-    aspect: [1, 1],
-    quality: 0.8,
-  });
-  if (!result.canceled) setAvatarUri(result.assets[0].uri);
-};
+  const openCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Please allow camera access in Settings.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect:        [1, 1],
+      quality:       0.8,
+    });
+    if (!result.canceled) setAvatarUri(result.assets[0].uri);
+  };
 
-  // ── Save ────────────────────────────────────────────────────────────────────
+  // ── Save ──────────────────────────────────────────────────
   const handleSave = async () => {
     if (!validate()) return;
     Animated.sequence([
@@ -127,9 +141,21 @@ const openCamera = async () => {
     ]).start();
     setIsSaving(true);
     try {
+      // Build next income date from selected day
+      const now      = new Date();
+      const nextDate = new Date(now.getFullYear(), now.getMonth(), selectedDay);
+      // If selected day already passed this month, use next month
+      if (nextDate <= now) {
+        nextDate.setMonth(nextDate.getMonth() + 1);
+      }
+      const nextIncomeDateStr = nextDate.toISOString().split('T')[0]; // YYYY-MM-DD
+
       await editProfile({
-        name:         form.name,
-        incomeAmount: Number(form.incomeAmount),
+        name:           form.name,
+        incomeAmount:   Number(form.incomeAmount),
+        incomeType:     form.incomeType,
+        incomeCycle:    form.incomeCycle,
+        nextIncomeDate: nextIncomeDateStr,
       });
       Alert.alert('Profile Updated', 'Your changes have been saved.', [
         { text: 'OK', onPress: () => router.back() },
@@ -146,9 +172,15 @@ const openCamera = async () => {
     if (errors[key]) setErrors(e => ({ ...e, [key]: '' }));
   };
 
-  const initials = form.name.trim().split(/\s+/).filter(n => n.length > 0).map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+  const initials = form.name.trim()
+    .split(/\s+/)
+    .filter(n => n.length > 0)
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || '?';
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────
   return (
     <SafeAreaView style={s.screen}>
       <StatusBar barStyle="dark-content" backgroundColor={Semantic.background} />
@@ -172,7 +204,11 @@ const openCamera = async () => {
         </View>
       </FadeSlide>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
         <ScrollView
           style={s.scroll}
           contentContainerStyle={s.scrollContent}
@@ -186,15 +222,15 @@ const openCamera = async () => {
             <View style={s.avatarSection}>
               <TouchableOpacity onPress={showPhotoOptions} activeOpacity={0.85} style={s.avatarWrap}>
                 {avatarUri ? (
-  <Image
-    source={{ uri: avatarUri }}
-    style={[s.avatarFallback, { borderWidth: 2.5, borderColor: Semantic.primary }]}
-  />
-) : (
-  <View style={s.avatarFallback}>
-    <Text style={s.avatarInitials}>{initials}</Text>
-  </View>
-)}
+                  <Image
+                    source={{ uri: avatarUri }}
+                    style={[s.avatarFallback, { borderWidth: 2.5, borderColor: Semantic.primary }]}
+                  />
+                ) : (
+                  <View style={s.avatarFallback}>
+                    <Text style={s.avatarInitials}>{initials}</Text>
+                  </View>
+                )}
                 <View style={s.cameraBadge}>
                   <Ionicons name="camera" size={12} color={Colors.white} />
                 </View>
@@ -265,17 +301,13 @@ const openCamera = async () => {
               {/* Income Type */}
               <TouchableOpacity
                 style={s.pickerRow}
-                onPress={() => { setShowTypePicker(v => !v); setShowCyclePicker(false); }}
+                onPress={() => { setShowTypePicker(v => !v); setShowCyclePicker(false); setShowDatePicker(false); }}
                 activeOpacity={0.7}
               >
                 <Ionicons name="briefcase-outline" size={15} color={Semantic.textMuted} style={s.rowIcon} />
                 <Text style={s.rowLabel}>Type</Text>
                 <Text style={s.pickerValue}>{form.incomeType}</Text>
-                <Ionicons
-                  name={showTypePicker ? 'chevron-up' : 'chevron-down'}
-                  size={14}
-                  color={Semantic.primary}
-                />
+                <Ionicons name={showTypePicker ? 'chevron-up' : 'chevron-down'} size={14} color={Semantic.primary} />
               </TouchableOpacity>
               {showTypePicker && (
                 <PickerDropdown
@@ -290,17 +322,13 @@ const openCamera = async () => {
               {/* Pay Cycle */}
               <TouchableOpacity
                 style={s.pickerRow}
-                onPress={() => { setShowCyclePicker(v => !v); setShowTypePicker(false); }}
+                onPress={() => { setShowCyclePicker(v => !v); setShowTypePicker(false); setShowDatePicker(false); }}
                 activeOpacity={0.7}
               >
-                <Ionicons name="calendar-outline" size={15} color={Semantic.textMuted} style={s.rowIcon} />
+                <Ionicons name="sync-outline" size={15} color={Semantic.textMuted} style={s.rowIcon} />
                 <Text style={s.rowLabel}>Pay Cycle</Text>
                 <Text style={s.pickerValue}>{form.incomeCycle}</Text>
-                <Ionicons
-                  name={showCyclePicker ? 'chevron-up' : 'chevron-down'}
-                  size={14}
-                  color={Semantic.primary}
-                />
+                <Ionicons name={showCyclePicker ? 'chevron-up' : 'chevron-down'} size={14} color={Semantic.primary} />
               </TouchableOpacity>
               {showCyclePicker && (
                 <PickerDropdown
@@ -315,7 +343,7 @@ const openCamera = async () => {
               {/* Monthly income */}
               <FieldRow
                 icon="cash-outline"
-                label="Monthly"
+                label="Amount"
                 value={form.incomeAmount}
                 onChange={set('incomeAmount')}
                 placeholder="e.g. 18000"
@@ -327,6 +355,33 @@ const openCamera = async () => {
                 error={errors.incomeAmount}
                 prefix="₱"
               />
+
+              <View style={s.divider} />
+
+              {/* ── Next Payday ── */}
+              <TouchableOpacity
+                style={s.pickerRow}
+                onPress={() => { setShowDatePicker(v => !v); setShowTypePicker(false); setShowCyclePicker(false); }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="calendar-outline" size={15} color={Semantic.textMuted} style={s.rowIcon} />
+                <Text style={s.rowLabel}>Payday</Text>
+                <Text style={s.pickerValue}>
+                  Every {selectedDay}{getOrdinal(selectedDay)}
+                </Text>
+                <Ionicons name={showDatePicker ? 'chevron-up' : 'chevron-down'} size={14} color={Semantic.primary} />
+              </TouchableOpacity>
+
+              {showDatePicker && (
+                <DayPickerDropdown
+                  selectedDay={selectedDay}
+                  onSelect={(day) => {
+                    setSelectedDay(day);
+                    setShowDatePicker(false);
+                  }}
+                />
+              )}
+
             </View>
           </FadeSlide>
 
@@ -361,7 +416,7 @@ const openCamera = async () => {
                     'Delete Account',
                     'This is permanent and cannot be undone.',
                     [
-                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Cancel', style: 'destructive' },
                       { text: 'Delete', style: 'destructive' },
                     ]
                   )
@@ -423,19 +478,48 @@ function PickerDropdown({
   );
 }
 
+function DayPickerDropdown({
+  selectedDay,
+  onSelect,
+}: { selectedDay: number; onSelect: (day: number) => void }) {
+  const days = Array.from({ length: 31 }, (_, i) => i + 1);
+  return (
+    <View style={s.dayPickerWrap}>
+      {days.map(day => (
+        <TouchableOpacity
+          key={day}
+          onPress={() => onSelect(day)}
+          activeOpacity={0.7}
+          style={[
+            s.dayBtn,
+            day === selectedDay && s.dayBtnActive,
+          ]}
+        >
+          <Text style={[
+            s.dayBtnText,
+            day === selectedDay && s.dayBtnTextActive,
+          ]}>
+            {day}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
 interface FieldRowProps {
-  icon: string;
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  keyboardType?: any;
+  icon:            string;
+  label:           string;
+  value:           string;
+  onChange:        (v: string) => void;
+  placeholder?:    string;
+  keyboardType?:   any;
   autoCapitalize?: any;
-  focused: boolean;
-  onFocus: () => void;
-  onBlur: () => void;
-  error?: string;
-  prefix?: string;
+  focused:         boolean;
+  onFocus:         () => void;
+  onBlur:          () => void;
+  error?:          string;
+  prefix?:         string;
 }
 
 function FieldRow({
@@ -477,130 +561,125 @@ function FieldRow({
   );
 }
 
-// ─── Styles — all tokens from your existing constants ────────────────────────
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   screen:        { flex: 1, backgroundColor: Semantic.background },
   scroll:        { flex: 1 },
   scrollContent: {
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.sm,
-    paddingBottom: 120,
-    gap: Spacing.lg,
+    paddingTop:        Spacing.sm,
+    paddingBottom:     120,
+    gap:               Spacing.lg,
   },
 
-  // Header — matches profileStyles pattern exactly
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection:   'row',
+    alignItems:      'center',
+    justifyContent:  'space-between',
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.md,
+    paddingTop:      Spacing.lg,
+    paddingBottom:   Spacing.md,
     backgroundColor: Semantic.background,
   },
   backBtn: {
     width: 34, height: 34,
-    borderRadius: BorderRadius.md,
+    borderRadius:    BorderRadius.md,
     backgroundColor: Semantic.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems:      'center',
+    justifyContent:  'center',
     ...Shadow.sm,
   },
   headerEyebrow: {
-    fontSize: Typography.sizes.xs,
-    color: Semantic.textMuted,
-    fontWeight: Typography.weights.medium,
+    fontSize:      Typography.sizes.xs,
+    color:         Semantic.textMuted,
+    fontWeight:    Typography.weights.medium,
     letterSpacing: Typography.letterSpacing.wide,
   },
   headerTitle: {
-    fontSize: Typography.sizes['2xl'],
-    fontWeight: Typography.weights.extrabold,
-    color: Semantic.text,
+    fontSize:      Typography.sizes['2xl'],
+    fontWeight:    Typography.weights.extrabold,
+    color:         Semantic.text,
     letterSpacing: Typography.letterSpacing.tight,
   },
   headerSaveBtn:  { paddingHorizontal: Spacing.xs, paddingVertical: 4 },
   headerSaveText: {
-    fontSize: Typography.sizes.sm,
+    fontSize:   Typography.sizes.sm,
     fontWeight: Typography.weights.bold,
-    color: Semantic.primary,
+    color:      Semantic.primary,
   },
 
-  // Section headers — reuse exact same tokens as profileStyles
   sectionHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    marginBottom: Spacing.sm,
+    alignItems:    'center',
+    gap:           Spacing.sm,
+    marginBottom:  Spacing.sm,
   },
   sectionDot: {
     width: 6, height: 6,
-    borderRadius: BorderRadius.full,
+    borderRadius:    BorderRadius.full,
     backgroundColor: Semantic.primary,
   },
   sectionDotIndigo: {
     width: 6, height: 6,
-    borderRadius: BorderRadius.full,
+    borderRadius:    BorderRadius.full,
     backgroundColor: Semantic.secondary,
   },
   sectionTitle: {
-    fontSize: Typography.sizes.xs,
-    fontWeight: Typography.weights.bold,
-    color: Semantic.text,
+    fontSize:      Typography.sizes.xs,
+    fontWeight:    Typography.weights.bold,
+    color:         Semantic.text,
     letterSpacing: Typography.letterSpacing.wider,
     textTransform: 'uppercase',
   },
 
-  // Avatar
   avatarSection: { alignItems: 'center', paddingVertical: Spacing.md },
   avatarWrap:    { position: 'relative', marginBottom: Spacing.sm },
   avatarFallback: {
     width: 72, height: 72,
-    borderRadius: BorderRadius.full,
+    borderRadius:    BorderRadius.full,
     backgroundColor: Colors.growthTeal,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2.5,
-    borderColor: Semantic.primary,
+    alignItems:      'center',
+    justifyContent:  'center',
+    borderWidth:     2.5,
+    borderColor:     Semantic.primary,
   },
   avatarInitials: {
-    fontSize: Typography.sizes['2xl'],
+    fontSize:   Typography.sizes['2xl'],
     fontWeight: Typography.weights.extrabold,
-    color: Colors.white,
+    color:      Colors.white,
   },
   cameraBadge: {
-    position: 'absolute',
+    position:        'absolute',
     bottom: 0, right: 0,
     backgroundColor: Semantic.primary,
     width: 24, height: 24,
     borderRadius: BorderRadius.full,
-    alignItems: 'center',
+    alignItems:   'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: Semantic.background,
+    borderWidth:  2,
+    borderColor:  Semantic.background,
   },
   changePhotoText: {
-    fontSize: Typography.sizes.sm,
-    color: Semantic.primary,
+    fontSize:   Typography.sizes.sm,
+    color:      Semantic.primary,
     fontWeight: Typography.weights.semibold,
   },
 
-  // Card — matches incomeCard / goalsCard style
   card: {
     backgroundColor: Semantic.surface,
-    borderRadius: BorderRadius.xl,
-    overflow: 'hidden',
+    borderRadius:    BorderRadius.xl,
+    overflow:        'hidden',
     ...Shadow.sm,
   },
   divider: {
-    height: 1,
+    height:          1,
     backgroundColor: Semantic.divider,
-    marginLeft: Spacing.lg + 15 + Spacing.sm, // icon width offset
+    marginLeft:      Spacing.lg + 15 + Spacing.sm,
   },
 
-  // Field rows
   fieldRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection:   'row',
+    alignItems:      'center',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
   },
@@ -608,69 +687,69 @@ const s = StyleSheet.create({
   rowIcon:         { marginRight: Spacing.sm },
   rowLabel: {
     fontSize: Typography.sizes.sm,
-    color: Semantic.textSecondary,
-    width: 72,
+    color:    Semantic.textSecondary,
+    width:    72,
   },
   fieldRight: {
-    flex: 1,
+    flex:          1,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems:    'center',
     justifyContent: 'flex-end',
   },
   prefix: {
-    fontSize: Typography.sizes.sm,
+    fontSize:   Typography.sizes.sm,
     fontWeight: Typography.weights.bold,
-    color: Semantic.primary,
+    color:      Semantic.primary,
     marginRight: 2,
   },
   fieldInput: {
-    flex: 1,
-    fontSize: Typography.sizes.sm,
+    flex:       1,
+    fontSize:   Typography.sizes.sm,
     fontWeight: Typography.weights.bold,
-    color: Semantic.text,
-    textAlign: 'right',
+    color:      Semantic.text,
+    textAlign:  'right',
   },
   errorRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    alignItems:    'center',
+    gap:           4,
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.sm,
-    marginLeft: 15 + Spacing.sm, // align under label
+    marginLeft:    15 + Spacing.sm,
   },
   errorText: {
     fontSize: Typography.sizes.xs,
-    color: Colors.error,
+    color:    Colors.error,
   },
 
-  // Picker rows
   pickerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection:   'row',
+    alignItems:      'center',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
   },
   pickerValue: {
-    fontSize: Typography.sizes.sm,
-    fontWeight: Typography.weights.bold,
-    color: Semantic.primary,
+    fontSize:    Typography.sizes.sm,
+    fontWeight:  Typography.weights.bold,
+    color:       Semantic.primary,
     marginRight: Spacing.xs,
+    flex:        1,
+    textAlign:   'right',
   },
 
-  // Dropdown
   dropdown: {
     backgroundColor: Semantic.background,
     marginHorizontal: Spacing.lg,
-    marginBottom: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Semantic.divider,
-    overflow: 'hidden',
+    marginBottom:    Spacing.sm,
+    borderRadius:    BorderRadius.md,
+    borderWidth:     1,
+    borderColor:     Semantic.divider,
+    overflow:        'hidden',
   },
   dropdownRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection:   'row',
+    alignItems:      'center',
+    justifyContent:  'space-between',
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.lg,
   },
@@ -678,34 +757,69 @@ const s = StyleSheet.create({
   dropdownText:       { fontSize: Typography.sizes.sm, color: Semantic.textSecondary },
   dropdownTextActive: { color: Semantic.primary, fontWeight: Typography.weights.bold },
 
-  // Action rows
+  // ── Day picker ──────────────────────────────────────────
+  dayPickerWrap: {
+    flexDirection:   'row',
+    flexWrap:        'wrap',
+    gap:             8,
+    marginHorizontal: Spacing.lg,
+    marginBottom:    Spacing.md,
+    backgroundColor: Semantic.background,
+    borderRadius:    BorderRadius.md,
+    borderWidth:     1,
+    borderColor:     Semantic.divider,
+    padding:         Spacing.md,
+  },
+  dayBtn: {
+    width:           38,
+    height:          38,
+    borderRadius:    19,
+    alignItems:      'center',
+    justifyContent:  'center',
+    backgroundColor: Semantic.surface,
+    borderWidth:     1,
+    borderColor:     Semantic.divider,
+  },
+  dayBtnActive: {
+    backgroundColor: Semantic.primary,
+    borderColor:     Semantic.primary,
+  },
+  dayBtnText: {
+    fontSize:   Typography.sizes.sm,
+    fontWeight: Typography.weights.medium,
+    color:      Semantic.text,
+  },
+  dayBtnTextActive: {
+    color:      Colors.white,
+    fontWeight: Typography.weights.bold,
+  },
+
   actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection:   'row',
+    alignItems:      'center',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
   },
   actionLabel: {
-    flex: 1,
-    fontSize: Typography.sizes.sm,
+    flex:       1,
+    fontSize:   Typography.sizes.sm,
     fontWeight: Typography.weights.medium,
-    color: Semantic.text,
+    color:      Semantic.text,
   },
 
-  // Save button — mirrors signOutBtn style
   saveBtn: {
-    height: 54,
-    borderRadius: BorderRadius.lg,
+    height:          54,
+    borderRadius:    BorderRadius.lg,
     backgroundColor: Semantic.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
+    flexDirection:   'row',
+    alignItems:      'center',
+    justifyContent:  'center',
+    gap:             Spacing.sm,
     ...Shadow.sm,
   },
   saveBtnText: {
-    fontSize: Typography.sizes.base,
+    fontSize:   Typography.sizes.base,
     fontWeight: Typography.weights.bold,
-    color: Colors.white,
+    color:      Colors.white,
   },
 });

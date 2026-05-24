@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Messages } from '../constants/messages';
+import api from '../services/api';
 import { expenseService } from '../services/expenseService';
+import { useInsightsStore } from '../store/useInsightsStore';
 import { CreateExpenseRequest, Expense } from '../types/expense';
 
 export const useExpenses = () => {
@@ -30,8 +32,20 @@ export const useExpenses = () => {
     try {
       setIsLoading(true);
       setError(null);
+
       const newExpense = await expenseService.createExpense(data);
+
       setExpenses(prev => [newExpense, ...prev]);
+
+      // Refresh dashboard stats
+      await api.get('/expenses/stats');
+
+      // Refresh insights
+      const { data: insightData } = await api.get('/insights');
+
+      // Update Zustand insights store
+      useInsightsStore.getState().setInsights(insightData);
+
       return newExpense;
     } catch (err: any) {
       const message = err?.message || Messages.errors.unknownError;
@@ -46,14 +60,21 @@ export const useExpenses = () => {
     try {
       setIsLoading(true);
       setError(null);
+
       console.log('[useExpenses] deleteExpense id:', id);
+
       await expenseService.deleteExpense(id);
+
       console.log('[useExpenses] deleteExpense success — updating state');
+
       setExpenses(prev => prev.filter(e => String(e.id) !== String(id)));
     } catch (err: any) {
       console.error('[useExpenses] deleteExpense error:', err?.message);
+
       const message = err?.message ?? Messages.errors.unknownError;
+
       setError(message);
+
       throw new Error(message);
     } finally {
       setIsLoading(false);

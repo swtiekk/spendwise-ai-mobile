@@ -3,7 +3,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   Animated,
   Modal,
   ScrollView,
@@ -13,7 +12,6 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { IncomeSettings } from '../../components/profile/IncomeSettings';
 import { NotificationSettings } from '../../components/profile/NotificationSettings';
 import { SavingsGoals } from '../../components/profile/SavingsGoals';
 import { UserInfo } from '../../components/profile/UserInfo';
@@ -38,23 +36,14 @@ function FadeSlide({ children, delay = 0 }: { children: React.ReactNode; delay?:
 }
 
 export default function ProfileScreen() {
-  const router                              = useRouter();
-  const { logout, user }                    = useAuth();
-  const { profile, savingsGoals, editProfile } = useUser();
+  const router                      = useRouter();
+  const { logout, user }            = useAuth();
+  const { profile, savingsGoals = [] } = useUser();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const handleLogout = async () => {
     setShowLogoutModal(false);
     await logout();
-  };
-
-  const handleSaveIncome = async (amount: number) => {
-    try {
-      await editProfile({ incomeAmount: amount });
-      Alert.alert('Saved', 'Income updated successfully.');
-    } catch {
-      Alert.alert('Error', 'Failed to update income. Please try again.');
-    }
   };
 
   const p = profile ?? {
@@ -85,35 +74,65 @@ export default function ProfileScreen() {
         contentContainerStyle={s.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── User hero card ── */}
+        {/* ── User Card ── */}
         <FadeSlide delay={60}>
           <UserInfo
             name={p.name}
             email={p.email}
-            incomeType={p.incomeType}
-            incomeCycle={p.incomeCycle}
-            incomeAmount={p.incomeAmount}
             onEditPress={() => router.push('/edit-profile')}
           />
         </FadeSlide>
 
-        {/* ── Income settings ── */}
-        <FadeSlide delay={120}>
+        {/* ── Income Summary (read-only) ── */}
+        <FadeSlide delay={100}>
           <View>
             <View style={s.sectionHeader}>
               <View style={s.sectionDot} />
               <Text style={s.sectionTitle}>Income</Text>
             </View>
-            <IncomeSettings
-              incomeAmount={p.incomeAmount}
-              incomeType={p.incomeType}
-              incomeCycle={p.incomeCycle}
-              onSave={handleSaveIncome}
-            />
+            <View style={{
+              backgroundColor: Semantic.surface,
+              borderRadius: 16,
+              padding: 16,
+              gap: 10,
+            }}>
+              {[
+                { label: 'Type',          value: p.incomeType  },
+                { label: 'Cycle',         value: p.incomeCycle },
+                { label: 'Amount',        value: `₱${(p.incomeAmount ?? 0).toLocaleString()}` },
+                { label: 'Next Payday',   value: (profile as any)?.nextIncomeDate ?? '—' },
+              ].map(({ label, value }) => (
+                <View key={label} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: Semantic.textMuted }}>{label}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: Semantic.text }}>{value}</Text>
+                </View>
+              ))}
+              <TouchableOpacity
+                onPress={() => router.push('/edit-profile')}
+                activeOpacity={0.7}
+                style={{
+                  marginTop: 8,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  paddingVertical: 10,
+                  borderRadius: 12,
+                  backgroundColor: Semantic.primaryBg,
+                  borderWidth: 1,
+                  borderColor: Semantic.primary,
+                }}
+              >
+                <Ionicons name="pencil-outline" size={13} color={Semantic.primary} />
+                <Text style={{ fontSize: 13, fontWeight: '700', color: Semantic.primary }}>
+                  Edit Income Settings
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </FadeSlide>
 
-        {/* ── Savings goals ── */}
+        {/* ── Savings Goals ── */}
         {savingsGoals.length > 0 && (
           <FadeSlide delay={180}>
             <View>
@@ -126,7 +145,7 @@ export default function ProfileScreen() {
           </FadeSlide>
         )}
 
-        {/* ── Notification settings ── */}
+        {/* ── Preferences ── */}
         <FadeSlide delay={240}>
           <View>
             <View style={s.sectionHeader}>
@@ -137,7 +156,7 @@ export default function ProfileScreen() {
           </View>
         </FadeSlide>
 
-        {/* ── Sign out button ── */}
+        {/* ── Sign Out ── */}
         <FadeSlide delay={300}>
           <TouchableOpacity
             style={s.signOutBtn}
@@ -149,7 +168,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </FadeSlide>
 
-        {/* ── App info footer ── */}
+        {/* ── Footer ── */}
         <FadeSlide delay={340}>
           <View style={s.appFooter}>
             <Text style={s.appFooterName}>SPENDWISE AI</Text>
@@ -158,7 +177,7 @@ export default function ProfileScreen() {
         </FadeSlide>
       </ScrollView>
 
-      {/* ── Sign out modal ── */}
+      {/* ── Logout Modal ── */}
       <Modal
         visible={showLogoutModal}
         transparent

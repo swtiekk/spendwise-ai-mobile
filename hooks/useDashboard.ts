@@ -1,64 +1,134 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Messages } from '../constants/messages';
-import { expenseService } from '../services/expenseService';
-import { ExpenseStats } from '../types/expense';
+import api from '../services/api';
+import { useUserStore } from '../store/useUserStore';
+import { onProfileUpdated } from './useUser';
 
 interface CategoryItem {
-  category: string;
-  amount: number;
+  category:   string;
+  amount:     number;
   percentage: number;
-  icon: string;  // ✅ ADDED
+  icon:       string;
 }
 
 interface DashboardData {
-  balance: number;
-  daysRemaining: number;
-  riskLevel: 'safe' | 'caution' | 'danger';
-  totalSpent: number;
-  categories: CategoryItem[];
+  balance:        number;
+  daysRemaining:  number;
+  riskLevel:      'safe' | 'caution' | 'danger';
+  totalSpent:     number;
+  totalIncome:    number;
+  savingsGoal:    number;
+  categories:     CategoryItem[];
+  nextIncomeDate: string;
+  incomeType:     string;
+  incomeCycle:    string;
+  incomeAmount:   number;
 }
 
-/**
- * Hook for dashboard data
- */
-export const useDashboard = () => {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+const CATEGORY_ICONS: Record<string, string> = {
+  food:          'utensils',
+  transport:     'car',
+  entertainment: 'film',
+  utilities:     'zap',
+  shopping:      'shopping-bag',
+  health:        'heart',
+  education:     'book',
+  savings:       'piggy-bank',
+  other:         'more-horizontal',
+};
 
+const CATEGORY_LABELS: Record<string, string> = {
+  food:          'Food & Dining',
+  transport:     'Transport',
+  entertainment: 'Entertainment',
+  utilities:     'Utilities',
+  shopping:      'Shopping',
+  health:        'Health',
+  education:     'Education',
+  savings:       'Savings',
+  other:         'Other',
+};
+
+export const useDashboard = () => {
+  const [data,      setData]      = useState<DashboardData | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error,     setError]     = useState<string | null>(null);
+
+  const profile = useUserStore((s) => s.profile);
+
+  // ── Load on mount ─────────────────────────────────────
   useEffect(() => {
     loadDashboard();
   }, []);
 
+  // ── Main load function ────────────────────────────────
   const loadDashboard = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      const stats: ExpenseStats = await expenseService.getExpenseStats();
-      
-      // Transform stats to dashboard format
-      const dashboardData: DashboardData = {
-        balance: stats.balance,
-        daysRemaining: calculateDaysRemaining(stats.balance, stats.averageDailySpend),
-        riskLevel: calculateRiskLevel(stats.balance),
-        totalSpent: stats.totalExpenses,
-        categories: Object.entries(stats.categoryBreakdown).map(([category, amount]) => ({
-          category: getCategoryLabel(category),
-          amount: amount as number,
-          percentage: Math.round(((amount as number) / stats.totalExpenses) * 100),
-          icon: getCategoryIcon(category),  // ✅ ADDED
-        })),
-      };
+      const statsRes = await api.get('/expenses/stats');
+      const stats    = statsRes.data;
 
-      setData(dashboardData);
+      // Days remaining from next_income_date or cycle fallback
+      const today = new Date();
+      let daysRemaining = stats.days_remaining ?? 0;
+
+      // If profile has next_income_date, use it directly
+      if (profile?.nextIncomeDate) {
+        const nextDate = new Date(profile.nextIncomeDate);
+        daysRemaining  = Math.max(0, Math.ceil((nextDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
+      }
+
+      const income        = stats.total_income || profile?.incomeAmount || 0;
+      const totalExpenses = stats.total_expenses || 0;
+      const spendingRatio = income > 0 ? totalExpenses / income : 0;
+
+      const riskLevel: 'safe' | 'caution' | 'danger' =
+        spendingRatio < 0.5 ? 'safe' :
+        spendingRatio < 0.8 ? 'caution' : 'danger';
+
+      const breakdown  = stats.category_breakdown || {};
+      const categories: CategoryItem[] = Object.entries(breakdown)
+        .map(([key, amount]) => ({
+          category:   CATEGORY_LABELS[key] || key,
+          amount:     amount as number,
+          percentage: totalExpenses > 0 ? Math.round(((amount as number) / totalExpenses) * 100) : 0,
+          icon:       CATEGORY_ICONS[key] || 'more-horizontal',
+        }))
+        .sort((a, b) => b.amount - a.amount);
+
+      const nextIncomeDate = profile?.nextIncomeDate
+        ? new Date(profile.nextIncomeDate).toISOString()
+        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+      setData({
+        balance:        stats.balance        ?? 0,
+        totalSpent:     totalExpenses,
+        totalIncome:    income,
+        savingsGoal:    stats.savings_goal   ?? profile?.savingsGoal ?? 0,
+        daysRemaining:  daysRemaining,
+        riskLevel:      riskLevel,
+        categories:     categories,
+        nextIncomeDate: nextIncomeDate,
+        incomeType:     profile?.incomeType  ?? 'salary',
+        incomeCycle:    profile?.incomeCycle ?? 'monthly',
+        incomeAmount:   income,
+      });
     } catch (err: any) {
-      const message = err?.message || Messages.errors.unknownError;
-      setError(message);
+      setError(err?.message || Messages.errors.unknownError);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [profile]);
+
+  // ── Refresh when profile updates (after edit-profile save) ──
+  useEffect(() => {
+    const unsubscribe = onProfileUpdated(() => {
+      loadDashboard();
+    });
+    return () => { unsubscribe(); };
+  }, [loadDashboard]);
 
   const refresh = useCallback(async () => {
     await loadDashboard();
@@ -72,52 +142,3 @@ export const useDashboard = () => {
     clearError: () => setError(null),
   };
 };
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-function calculateDaysRemaining(balance: number, dailyBurnRate: number): number {
-  if (dailyBurnRate === 0) return Infinity;
-  return Math.max(0, Math.floor(balance / dailyBurnRate));
-}
-
-function calculateRiskLevel(balance: number): 'safe' | 'caution' | 'danger' {
-  if (balance > 5000) return 'safe';
-  if (balance > 1000) return 'caution';
-  return 'danger';
-}
-
-/**
- * Get friendly label for category
- */
-function getCategoryLabel(category: string): string {
-  const labels: Record<string, string> = {
-    food: 'Food & Dining',
-    transport: 'Transport',
-    entertainment: 'Entertainment',
-    utilities: 'Utilities',
-    shopping: 'Shopping',
-    health: 'Health',
-    education: 'Education',
-    other: 'Other',
-  };
-  return labels[category] || category;
-}
-
-/**
- * Get icon name for category
- */
-function getCategoryIcon(category: string): string {
-  const icons: Record<string, string> = {
-    food: 'utensils',
-    transport: 'car',
-    entertainment: 'film',
-    utilities: 'zap',
-    shopping: 'shopping-bag',
-    health: 'heart',
-    education: 'book',
-    other: 'more-horizontal',
-  };
-  return icons[category] || 'more-horizontal';
-}

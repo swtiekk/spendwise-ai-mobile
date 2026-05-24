@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { MLInsights, SmartPurchaseDecision } from '../types/ml';
 
+
 interface InsightsStore {
   insights: MLInsights | null;
   lastPurchaseDecision: SmartPurchaseDecision | null;
