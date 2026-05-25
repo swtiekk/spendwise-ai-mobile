@@ -47,24 +47,18 @@ export const insightsService = {
         ? d.recommendations.map((r: any, index: number) =>
             typeof r === 'string'
               ? {
-                  id: String(index + 1),
-                  title: r,
+                  id:          String(index + 1),
+                  title:       r,
                   description: r,
-                  priority: 'medium',
-                  createdAt: '',
+                  priority:    'medium',
+                  createdAt:   '',
                 }
               : {
-                  id: String(r.id ?? index + 1),
-                  title: r.title ?? r.description ?? 'Recommendation',
-                  description:
-                    r.description ??
-                    r.title ??
-                    '',
-                  priority: r.priority ?? 'medium',
-                  createdAt:
-                    r.createdAt ??
-                    r.created_at ??
-                    '',
+                  id:          String(r.id ?? index + 1),
+                  title:       r.title ?? r.description ?? 'Recommendation',
+                  description: r.description ?? r.title ?? '',
+                  priority:    r.priority ?? 'medium',
+                  createdAt:   r.createdAt ?? r.created_at ?? '',
                 }
           )
         : [],
@@ -114,26 +108,53 @@ export const insightsService = {
     request: SmartPurchaseRequest
   ): Promise<SmartPurchaseDecision> => {
     const res = await api.post('/smart-purchase', {
-      amount: request.amount,
-      category: request.category,
+      amount:      request.amount,
+      category:    request.category,
       description: request.description ?? '',
     });
 
     const d = res.data;
 
+    // Map backend recommendation/decision → frontend decision key
+    const recommendationMap: Record<string, 'safe' | 'caution' | 'risky'> = {
+      recommended:     'safe',
+      safe:            'safe',
+      low:             'safe',
+      green:           'safe',
+      caution:         'caution',
+      medium:          'caution',
+      moderate:        'caution',
+      warning:         'caution',
+      yellow:          'caution',
+      not_recommended: 'risky',
+      risky:           'risky',
+      high:            'risky',
+      danger:          'risky',
+      red:             'risky',
+    };
+
+    const rawDecision = (
+      d.decision ??
+      d.recommendation ??
+      'caution'
+    ).toLowerCase();
+
+    const decision = recommendationMap[rawDecision] ?? 'caution';
+
+    // Derive riskScore since backend doesn't return one
+    const riskScoreMap: Record<string, number> = {
+      safe:    20,
+      caution: 55,
+      risky:   90,
+    };
+
     return {
-      decision: d.decision,
-      riskScore: d.risk_score ?? d.riskScore ?? 0,
-      reasoning: d.reasoning ?? '',
-      suggestions: d.suggestions ?? [],
-      currentBalance:
-        d.current_balance ??
-        d.currentBalance ??
-        0,
-      remainingBudget:
-        d.remaining_budget ??
-        d.remainingBudget ??
-        0,
+      decision,
+      riskScore:       d.risk_score ?? d.riskScore ?? riskScoreMap[decision],
+      reasoning:       d.reason ?? d.reasoning ?? '',
+      suggestions:     d.suggestions ?? [],
+      currentBalance:  d.balance_before ?? d.current_balance ?? d.currentBalance ?? 0,
+      remainingBudget: d.balance_after ?? d.remaining_budget ?? d.remainingBudget ?? 0,
       estimatedDaysUntilShortfall:
         d.estimated_days_until_shortfall ??
         d.estimatedDaysUntilShortfall ??
@@ -176,7 +197,6 @@ export const insightsService = {
    */
   getPredictions: async (): Promise<any[]> => {
     const res = await api.get('/insights');
-
     return (
       res.data.predictions ??
       res.data.weeklyTrend ??

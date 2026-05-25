@@ -37,15 +37,35 @@ const RISK_CONFIG = {
   },
 };
 
+// Normalize any backend value to a valid RiskLevel key
+function normalizeRiskLevel(value: string | null | undefined): RiskLevel {
+  const map: Record<string, RiskLevel> = {
+    low:      'low',
+    safe:     'low',
+    green:    'low',
+    medium:   'medium',
+    moderate: 'medium',
+    caution:  'medium',
+    warning:  'medium',
+    yellow:   'medium',
+    high:     'high',
+    danger:   'high',
+    critical: 'high',
+    red:      'high',
+  };
+  return map[(value ?? '').toLowerCase()] ?? 'low';
+}
+
 export const RiskLevelCard: React.FC<RiskLevelCardProps> = ({ riskLevel, onPress }) => {
-  const cfg = RISK_CONFIG[riskLevel];
+  const normalized = normalizeRiskLevel(riskLevel);
+  const cfg = RISK_CONFIG[normalized];
 
   return (
-    <Pressable 
+    <Pressable
       style={({ pressed }) => [
-        s.riskCard, 
+        s.riskCard,
         { backgroundColor: cfg.bg },
-        pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+        pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
       ]}
       onPress={onPress}
       disabled={!onPress}
