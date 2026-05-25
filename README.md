@@ -1,50 +1,85 @@
-# Welcome to your Expo app 👋
+# SpendWise AI – Mobile Application
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+## Project Description
 
-## Get started
+SpendWise AI Mobile is a React Native / Expo application for personal expense tracking and AI-powered financial insights. Users can log expenses, monitor their spending health, and receive real-time ML-based recommendations — all through a clean, mobile-first interface. The app communicates with the SpendWise AI FastAPI backend via Axios.
 
-1. Install dependencies
+## Features
 
-   ```bash
-   npm install
-   ```
+- **Authentication** – Login, Register, and Onboarding screens; JWT token persisted in AsyncStorage
+- **Dashboard** – Balance card, sustainability status, category spending breakdown, active alerts, and Smart Purchase shortcut
+- **Expense Management** – Add expenses with amount, category, description, and timestamp; full history with edit and delete
+- **Smart Purchase Advisor** – Enter a proposed purchase; get an AI risk indicator and recommendation (approve / caution / decline)
+- **AI Insights** – User cluster card, risk level card, behavior trends, and personalized recommendation list
+- **Spending Health Screen** – Daily burn rate and days-remaining visualization
+- **Profile Management** – Edit income settings, income type, income cycle, next income date, savings goals, and notification preferences
 
-2. Start the app
+## Technology Stack
 
-   ```bash
-   npx expo start
-   ```
+| Layer | Technology |
+|---|---|
+| Framework | React Native 0.81.5 + Expo ~54.0.34 |
+| Navigation | Expo Router ~6.0.23 (file-based) + React Navigation Bottom Tabs ^7.4.0 |
+| State Management | Zustand ^5.0.11 |
+| HTTP Client | Axios ^1.13.6 |
+| Forms | React Hook Form ^7.71.2 |
+| Storage | @react-native-async-storage/async-storage 2.2.0 |
+| Date Utilities | date-fns ^4.1.0 |
+| Language | TypeScript ~5.9.2 |
+| Icons | @expo/vector-icons ^15.0.3 |
 
-In the output, you'll find options to open the app in a
+## System Architecture
+app/
+auth/           – login.tsx, register.tsx, onboarding.tsx
+(tabs)/         – dashboard.tsx, add-expense.tsx, history.tsx, insights.tsx, profile.tsx
+modals/         – smart-purchase.tsx, confirmation.tsx
+spending-health.tsx
+components/
+dashboard/      – BalanceCard, SpendingBreakdown, AlertsList, SustainabilityStatus, SmartPurchaseButton
+expense/        – AddExpenseForm, ExpenseCard, AmountInput, CategorySelector
+insights/       – UserClusterCard, RiskLevelCard, BehaviorTrends, RecommendationList
+smart-purchase/ – SmartPurchaseSheet, RiskIndicator, PurchaseDecisionModal, PurchaseRecommendation
+profile/        – UserInfo, IncomeSettings, SavingsGoals, NotificationSettings
+ui/             – Button, Card, Input, Badge, AlertBox, ProgressRing, StatusBadge, Divider
+hooks/            – useDashboard, useInsights, useSmartPurchase, useUser, useSustainability, useNotifications
+types/            – auth.ts, user.ts, expense.ts, ml.ts, api.ts
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Installation & Setup
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+**Prerequisites:** Node.js 18+, Expo Go app on your device
 
 ```bash
-npm run reset-project
+git clone https://github.com/swtiekk/spendwise-ai-mobile.git
+cd spendwise-ai-mobile
+
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Update the API base URL in the API service/config file to point to your running FastAPI backend:
+http://<your-local-ip>:8000
 
-## Learn more
+```bash
+npx expo start
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+- Scan the QR code with **Expo Go**
+- Press `a` for Android emulator
+- Press `i` for iOS simulator
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
 
-## Join the community
 
-Join our community of developers creating universal apps.
+## Team Members and Roles
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Sotie Katrina Golez
+Florie Jayne Soler
+Trisha Araquil
+Steve Drylle Sarino
+
+
+## Known Limitations
+
+- Expo Go does not support all native modules; some features may require a development build (`npx expo run:android`)
+- The API base URL must be manually updated to match the backend server's local IP
+- Offline mode is not supported; all features require an active connection to the FastAPI backend
+- iOS build was not tested on a physical device; primarily developed and tested on Android
+
