@@ -28,7 +28,6 @@ SpendWise AI Mobile is a React Native / Expo application for personal expense tr
 | Language | TypeScript ~5.9.2 |
 | Icons | @expo/vector-icons ^15.0.3 |
 
-
 ## System Architecture
 
 ```
@@ -93,13 +92,14 @@ Steve Drylle Sarino
 - iOS build was not tested on a physical device; primarily developed and tested on Android
 
 ## Screenshots
-![Screenshot](app/docs/1.png)
-![Screenshot](app/docs/2.png)
-![Screenshot](app/docs/3.png)
-![Screenshot](app/docs/4.png)
-![Screenshot](app/docs/5.png)
-![Screenshot](app/docs/6.png)
-![Screenshot](app/docs/7.png)
-![Screenshot](app/docs/8.png)
-![Screenshot](app/docs/9.png)
-![Screenshot](app/docs/10.png)
+
+![Screenshot](app/docs/1.jpg)
+![Screenshot](app/docs/2.jpg)
+![Screenshot](app/docs/3.jpg)
+![Screenshot](app/docs/4.jpg)
+![Screenshot](app/docs/5.jpg)
+![Screenshot](app/docs/6.jpg)
+![Screenshot](app/docs/7.jpg)
+![Screenshot](app/docs/8.jpg)
+![Screenshot](app/docs/9.jpg)
+![Screenshot](app/docs/10.jpg)
