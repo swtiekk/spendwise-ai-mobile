@@ -93,13 +93,13 @@ Steve Drylle Sarino
 - iOS build was not tested on a physical device; primarily developed and tested on Android
 
 ## Screenshots
-![Screenshot](docs/1.png)
-![Screenshot](docs/2.png)
-![Screenshot](docs/3.png)
-![Screenshot](docs/4.png)
-![Screenshot](docs/5.png)
-![Screenshot](docs/6.png)
-![Screenshot](docs/7.png)
-![Screenshot](docs/8.png)
-![Screenshot](docs/9.png)
-![Screenshot](docs/10.png)
+![Screenshot](app/docs/1.png)
+![Screenshot](app/docs/2.png)
+![Screenshot](app/docs/3.png)
+![Screenshot](app/docs/4.png)
+![Screenshot](app/docs/5.png)
+![Screenshot](app/docs/6.png)
+![Screenshot](app/docs/7.png)
+![Screenshot](app/docs/8.png)
+![Screenshot](app/docs/9.png)
+![Screenshot](app/docs/10.png)
