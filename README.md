@@ -28,21 +28,25 @@ SpendWise AI Mobile is a React Native / Expo application for personal expense tr
 | Language | TypeScript ~5.9.2 |
 | Icons | @expo/vector-icons ^15.0.3 |
 
+
 ## System Architecture
+
+```
 app/
-auth/           – login.tsx, register.tsx, onboarding.tsx
-(tabs)/         – dashboard.tsx, add-expense.tsx, history.tsx, insights.tsx, profile.tsx
-modals/         – smart-purchase.tsx, confirmation.tsx
-spending-health.tsx
+├── auth/               – login.tsx, register.tsx, onboarding.tsx
+├── (tabs)/             – dashboard.tsx, add-expense.tsx, history.tsx, insights.tsx, profile.tsx
+├── modals/             – smart-purchase.tsx, confirmation.tsx
+└── spending-health.tsx
 components/
-dashboard/      – BalanceCard, SpendingBreakdown, AlertsList, SustainabilityStatus, SmartPurchaseButton
-expense/        – AddExpenseForm, ExpenseCard, AmountInput, CategorySelector
-insights/       – UserClusterCard, RiskLevelCard, BehaviorTrends, RecommendationList
-smart-purchase/ – SmartPurchaseSheet, RiskIndicator, PurchaseDecisionModal, PurchaseRecommendation
-profile/        – UserInfo, IncomeSettings, SavingsGoals, NotificationSettings
-ui/             – Button, Card, Input, Badge, AlertBox, ProgressRing, StatusBadge, Divider
-hooks/            – useDashboard, useInsights, useSmartPurchase, useUser, useSustainability, useNotifications
-types/            – auth.ts, user.ts, expense.ts, ml.ts, api.ts
+├── dashboard/          – BalanceCard, SpendingBreakdown, AlertsList, SustainabilityStatus, SmartPurchaseButton
+├── expense/            – AddExpenseForm, ExpenseCard, AmountInput, CategorySelector
+├── insights/           – UserClusterCard, RiskLevelCard, BehaviorTrends, RecommendationList
+├── smart-purchase/     – SmartPurchaseSheet, RiskIndicator, PurchaseDecisionModal, PurchaseRecommendation
+├── profile/            – UserInfo, IncomeSettings, SavingsGoals, NotificationSettings
+└── ui/                 – Button, Card, Input, Badge, AlertBox, ProgressRing, StatusBadge, Divider
+hooks/                  – useDashboard, useInsights, useSmartPurchase, useUser, useSustainability, useNotifications
+types/                  – auth.ts, user.ts, expense.ts, ml.ts, api.ts
+```
 
 ## Installation & Setup
 
@@ -56,7 +60,10 @@ npm install
 ```
 
 Update the API base URL in the API service/config file to point to your running FastAPI backend:
+
+```
 http://<your-local-ip>:8000
+```
 
 ```bash
 npx expo start
@@ -66,15 +73,17 @@ npx expo start
 - Press `a` for Android emulator
 - Press `i` for iOS simulator
 
+## Deployment Link
+
+
 
 
 ## Team Members and Roles
 
-Sotie Katrina Golez
-Florie Jayne Soler
-Trisha Araquil
-Steve Drylle Sarino
-
+Sotie Katrina Golez  
+Florie Jayne Soler  
+Trisha Araquil  
+Steve Drylle Sarino  
 
 ## Known Limitations
 
@@ -82,4 +91,3 @@ Steve Drylle Sarino
 - The API base URL must be manually updated to match the backend server's local IP
 - Offline mode is not supported; all features require an active connection to the FastAPI backend
 - iOS build was not tested on a physical device; primarily developed and tested on Android
-
