@@ -8,7 +8,7 @@ import {
   SmartPurchaseRequest,
 } from '../types/ml';
 
-// ✅ ADD THIS IMPORT
+// Import for profile update listener
 import { onProfileUpdated } from './useUser';
 
 /**
@@ -26,113 +26,80 @@ export const useInsights = () => {
     clearPurchaseDecision,
   } = useInsightsStore();
 
-  const loadInsights = useCallback(
-    async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  const loadInsights = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        const data =
-          await insightsService.getInsights();
+      const data = await insightsService.getInsights();
+      setInsights(data);
+    } catch (err: any) {
+      const message =
+        err?.message || Messages.errors.unknownError;
 
-        setInsights(data);
-      } catch (err: any) {
-        const message =
-          err?.message ||
-          Messages.errors
-            .unknownError;
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  }, [setInsights, setLoading, setError]);
 
-        setError(message);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [
-      setInsights,
-      setLoading,
-      setError,
-    ]
-  );
-
-  // ✅ ALWAYS refresh insights when screen mounts
+  // Always load insights when hook is first used
   useEffect(() => {
     loadInsights();
-  }, []);
+  }, [loadInsights]);
 
-  // ✅ NEW — refresh insights when profile updates
+  // Refresh insights when user profile is updated (next income date, etc.)
   useEffect(() => {
-    const unsubscribe =
-      onProfileUpdated(() => {
-        loadInsights();
-      });
+    const unsubscribe = onProfileUpdated(() => {
+      loadInsights();
+    });
 
     return () => {
       unsubscribe();
     };
-  }, [loadInsights]);
+  }, []); // ← Fixed: Empty dependency array (safe & stable)
 
-  const getSmartPurchaseDecision =
-    useCallback(
-      async (
-        request: SmartPurchaseRequest
-      ): Promise<SmartPurchaseDecision> => {
-        try {
-          setLoading(true);
-          setError(null);
-
-          const decision =
-            await insightsService.getSmartPurchaseDecision(
-              request
-            );
-
-          return decision;
-        } catch (err: any) {
-          const message =
-            err?.message ||
-            Messages.errors
-              .unknownError;
-
-          setError(message);
-
-          throw new Error(
-            message
-          );
-        } finally {
-          setLoading(false);
-        }
-      },
-      [setLoading, setError]
-    );
-
-  const getRecommendations =
-    useCallback(async () => {
+  const getSmartPurchaseDecision = useCallback(
+    async (request: SmartPurchaseRequest): Promise<SmartPurchaseDecision> => {
       try {
         setLoading(true);
         setError(null);
 
-        return await insightsService.getRecommendations();
+        const decision = await insightsService.getSmartPurchaseDecision(request);
+        return decision;
       } catch (err: any) {
         const message =
-          err?.message ||
-          Messages.errors
-            .unknownError;
+          err?.message || Messages.errors.unknownError;
 
         setError(message);
-
-        throw new Error(
-          message
-        );
+        throw new Error(message);
       } finally {
         setLoading(false);
       }
-    }, [setLoading, setError]);
-
-  const refresh = useCallback(
-    async () => {
-      await loadInsights();
     },
-    [loadInsights]
+    [setLoading, setError]
   );
+
+  const getRecommendations = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      return await insightsService.getRecommendations();
+    } catch (err: any) {
+      const message =
+        err?.message || Messages.errors.unknownError;
+
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setLoading(false);
+    }
+  }, [setLoading, setError]);
+
+  const refresh = useCallback(async () => {
+    await loadInsights();
+  }, [loadInsights]);
 
   return {
     insights,
@@ -141,8 +108,7 @@ export const useInsights = () => {
     getSmartPurchaseDecision,
     getRecommendations,
     refresh,
-    clearError: () =>
-      setError(null),
+    clearError: () => setError(null),
     clearPurchaseDecision,
   };
 };

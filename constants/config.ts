@@ -4,7 +4,7 @@ export const AppConfig = {
   API_TIMEOUT: 10000,
   MIN_PASSWORD_LENGTH: 6,
   MAX_DESCRIPTION_LENGTH: 100,
-  BASE_URL: 'http://172.22.182.219:8000',  // ← removed /api
+  BASE_URL: 'http://192.168.254.120:8000',  // ← removed /api
 
 } as const;
 

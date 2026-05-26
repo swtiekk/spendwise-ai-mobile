@@ -6,12 +6,15 @@ export interface UserProfile {
   id: string;
   email: string;
   name: string;
+  phone?: string;                    // ← Added
   avatar?: string;
+  
   incomeType: 'salary' | 'allowance' | 'freelance' | 'other';
   incomeCycle: 'weekly' | 'biweekly' | 'monthly';
   incomeAmount: number;
   nextIncomeDate: string;
   savingsGoal?: number;
+
   preferences: UserPreferences;
   createdAt: string;
   updatedAt: string;
@@ -47,8 +50,13 @@ export interface NotificationSettings {
 
 export interface UpdateProfileRequest {
   name?: string;
+  email?: string;                    // ← Added
+  phone?: string;                    // ← Added
   incomeAmount?: number;
+  incomeType?: 'salary' | 'allowance' | 'freelance' | 'other';
+  incomeCycle?: 'weekly' | 'biweekly' | 'monthly';
   nextIncomeDate?: string;
+  savingsGoal?: number;
   preferences?: Partial<UserPreferences>;
 }
 

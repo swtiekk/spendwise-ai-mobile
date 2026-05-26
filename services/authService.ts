@@ -12,10 +12,10 @@ export const authService = {
     console.log('username resolved:', username);
 
     const res = await fetch(`${BASE_URL}/auth/login`, {
-      method:  'POST',
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept':       'application/json',
+        'Accept': 'application/json',
       },
       body: JSON.stringify({
         username: username,
@@ -41,6 +41,7 @@ export const authService = {
     }
 
     const data = await res.json();
+
     const userRes = await fetch(`${BASE_URL}/auth/me`, {
       headers: { Authorization: `Bearer ${data.access_token}` },
     });
@@ -51,12 +52,13 @@ export const authService = {
     return {
       user: {
         id:             String(userData.id),
-        name:           userData.first_name || userData.username,
+        name:           userData.name || userData.username,
+        email:          userData.email ?? '',                    // ← Added
         username:       userData.username,
         incomeType:     userData.income_type   ?? 'other',
         incomeCycle:    userData.income_cycle  ?? 'monthly',
         incomeAmount:   userData.income_amount ?? 0,
-        nextIncomeDate: '',
+        nextIncomeDate: userData.next_income_date ?? '',
         createdAt:      '',
         updatedAt:      '',
       },
@@ -76,9 +78,9 @@ export const authService = {
     console.log('income_cycle:', credentials.incomeCycle);
 
     const res = await fetch(`${BASE_URL}/auth/register`, {
-      method:  'POST',
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
+      body: JSON.stringify({
         username:     username,
         email:        credentials.email,
         password:     credentials.password,
@@ -107,27 +109,26 @@ export const authService = {
       throw new Error(errMsg);
     }
 
-    // ── Auto-login after register ─────────────────────────
-console.log('=== AUTO LOGIN DEBUG ===');
-console.log('Attempting login with username:', username);
-console.log('Password length:', credentials.password.length);
+    // ── Auto-login after successful registration ─────────────────────────
+    console.log('=== AUTO LOGIN DEBUG ===');
+    console.log('Attempting login with username:', username);
 
-const loginRes = await fetch(`${BASE_URL}/auth/login`, {
-  method:  'POST',
-  headers: { 'Content-Type': 'application/json' },  // ← JSON not form
-  body:    JSON.stringify({
-    username: username,
-    password: credentials.password,
-  }),
-});
+    const loginRes = await fetch(`${BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: username,
+        password: credentials.password,
+      }),
+    });
 
-console.log('Auto-login status:', loginRes.status);
-const loginText = await loginRes.text();
-console.log('Auto-login response:', loginText);
+    console.log('Auto-login status:', loginRes.status);
+    const loginText = await loginRes.text();
+    console.log('Auto-login response:', loginText);
 
-if (!loginRes.ok) {
-  throw new Error(`Auto-login failed: ${loginText}`);
-}
+    if (!loginRes.ok) {
+      throw new Error(`Auto-login failed: ${loginText}`);
+    }
 
     const loginData = JSON.parse(loginText);
 
@@ -141,12 +142,13 @@ if (!loginRes.ok) {
     return {
       user: {
         id:             String(userData.id),
-        name:           userData.first_name || userData.username,
+        name:           userData.name || userData.username,
+        email:          userData.email ?? '',                    // ← Added
         username:       userData.username,
         incomeType:     userData.income_type   ?? 'other',
         incomeCycle:    userData.income_cycle  ?? 'monthly',
         incomeAmount:   userData.income_amount ?? 0,
-        nextIncomeDate: '',
+        nextIncomeDate: userData.next_income_date ?? '',
         createdAt:      '',
         updatedAt:      '',
       },
@@ -155,7 +157,7 @@ if (!loginRes.ok) {
   },
 
   logout: async (): Promise<void> => {
-    // JWT logout handled client-side
+    // JWT is stateless — handled on client side
   },
 
   getCurrentUser: async (token: string): Promise<User> => {
@@ -169,12 +171,13 @@ if (!loginRes.ok) {
 
     return {
       id:             String(userData.id),
-      name:           userData.first_name || userData.username,
+      name:           userData.name || userData.username,
+      email:          userData.email ?? '',                      // ← Added
       username:       userData.username,
       incomeType:     userData.income_type   ?? 'other',
       incomeCycle:    userData.income_cycle  ?? 'monthly',
       incomeAmount:   userData.income_amount ?? 0,
-      nextIncomeDate: '',
+      nextIncomeDate: userData.next_income_date ?? '',
       createdAt:      '',
       updatedAt:      '',
     };
@@ -188,5 +191,4 @@ if (!loginRes.ok) {
     _currentPassword: string,
     _newPassword: string
   ): Promise<void> => {},
-
 };

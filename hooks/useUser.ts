@@ -30,7 +30,7 @@ export const useUser = () => {
   } = useUserStore();
 
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError]         = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -40,19 +40,20 @@ export const useUser = () => {
       const res = await api.get('/profile');
 
       const fetchedProfile: UserProfile = {
-        id:             authUser?.id    ?? '',
-        email:          (authUser as any)?.email ?? '',
-        name:           authUser?.name  ?? '',
-        incomeType:     res.data.income_type      ?? 'salary',
-        incomeCycle:    res.data.income_cycle     ?? 'monthly',
-        incomeAmount:   res.data.income_amount    ?? 0,
+        id: authUser?.id ?? '',
+        email: res.data.email ?? (authUser as any)?.email ?? '',
+        name: res.data.first_name ?? authUser?.name ?? '',
+        phone: res.data.phone ?? '',                    // ← Added support
+        incomeType: res.data.income_type ?? 'salary',
+        incomeCycle: res.data.income_cycle ?? 'monthly',
+        incomeAmount: res.data.income_amount ?? 0,
         nextIncomeDate: res.data.next_income_date ?? '',
-        savingsGoal:    res.data.savings_goal     ?? 0,
+        savingsGoal: res.data.savings_goal ?? 0,
         preferences: {
           notificationsEnabled: true,
-          darkMode:             false,
-          currency:             'PHP',
-          language:             'en',
+          darkMode: false,
+          currency: 'PHP',
+          language: 'en',
           budgetAlertThreshold: 80,
         },
         createdAt: '',
@@ -79,22 +80,24 @@ export const useUser = () => {
         setError(null);
 
         await api.patch('/profile', {
-          ...(data.incomeAmount   !== undefined && { income_amount:    data.incomeAmount   }),
-          ...(data.incomeType     !== undefined && { income_type:      data.incomeType     }),
-          ...(data.incomeCycle    !== undefined && { income_cycle:     data.incomeCycle    }),
+          ...(data.name !== undefined && { first_name: data.name }),
+          ...(data.email !== undefined && { email: data.email }),           // ← Added
+          ...(data.phone !== undefined && { phone: data.phone }),           // ← Added
+          ...(data.incomeAmount !== undefined && { income_amount: data.incomeAmount }),
+          ...(data.incomeType !== undefined && { income_type: data.incomeType }),
+          ...(data.incomeCycle !== undefined && { income_cycle: data.incomeCycle }),
           ...(data.nextIncomeDate !== undefined && { next_income_date: data.nextIncomeDate }),
-          ...(data.savingsGoal    !== undefined && { savings_goal:     data.savingsGoal    }),
-          ...(data.name           !== undefined && { first_name:       data.name           }),
+          ...(data.savingsGoal !== undefined && { savings_goal: data.savingsGoal }),
         });
 
+        // Update local store
         updateProfile(data);
 
         // Reload latest profile from backend
         await loadProfile();
 
-        // ── Notify dashboard and insights to refresh ──────
+        // Notify other hooks (Dashboard, Insights, etc.)
         emitProfileUpdated();
-
       } catch (err: any) {
         setError(err?.message ?? 'Failed to update profile');
       } finally {

@@ -8,96 +8,59 @@ import api from './api';
 export const insightsService = {
   /**
    * Fetch ML insights from FastAPI backend and map all supported fields.
+   * Improved mapping to handle backend snake_case → frontend camelCase
    */
   getInsights: async (): Promise<MLInsights> => {
     const res = await api.get('/insights');
-    const d = res.data;
+    const d = res.data || {};
+
+    // Core ML fields from backend
+    const userCluster = d.user_cluster ?? d.userCluster ?? 'Balanced Spender';
+    const clusterDescription = d.cluster_description ?? d.clusterDescription ?? '';
+    const riskLevel = d.risk_level ?? d.riskLevel ?? 'low';
+    const prediction = d.prediction ?? d.sustainability ?? 'on_track';
 
     return {
-      // Core fields
-      userId: String(d.userId ?? d.user_id ?? ''),
-      userCluster:
-        d.userCluster ??
-        d.user_cluster ??
-        'Balanced Spender',
-      clusterDescription:
-        d.clusterDescription ??
-        d.cluster_description ??
-        '',
-      dailyBurnRate:
-        d.dailyBurnRate ??
-        d.daily_burn_rate ??
-        0,
-      daysRemaining:
-        d.daysRemaining ??
-        d.days_remaining ??
-        0,
-      riskLevel:
-        d.riskLevel ??
-        d.risk_level ??
-        'low',
+      // Core fields from backend
+      userId: String(d.user_id ?? d.userId ?? ''),
+      userCluster,
+      clusterDescription,
+      dailyBurnRate: d.daily_burn_rate ?? d.dailyBurnRate ?? 0,
+      daysRemaining: d.days_remaining ?? d.daysRemaining ?? 0,
+      riskLevel,
 
-      // Prediction data
-      predictions: Array.isArray(d.predictions)
-        ? d.predictions
-        : [],
+      // Prediction & sustainability
+      prediction,
 
-      // Recommendations
+      // Recommendations (backend doesn't return yet → fallback)
       recommendations: Array.isArray(d.recommendations)
-        ? d.recommendations.map((r: any, index: number) =>
-            typeof r === 'string'
-              ? {
-                  id:          String(index + 1),
-                  title:       r,
-                  description: r,
-                  priority:    'medium',
-                  createdAt:   '',
-                }
-              : {
-                  id:          String(r.id ?? index + 1),
-                  title:       r.title ?? r.description ?? 'Recommendation',
-                  description: r.description ?? r.title ?? '',
-                  priority:    r.priority ?? 'medium',
-                  createdAt:   r.createdAt ?? r.created_at ?? '',
-                }
-          )
+        ? d.recommendations.map((r: any, index: number) => ({
+            id: String(r.id ?? index + 1),
+            title: typeof r === 'string' ? r : r.title ?? r.description ?? 'Recommendation',
+            description: typeof r === 'string' ? r : r.description ?? '',
+            priority: r.priority ?? 'medium',
+            createdAt: r.created_at ?? r.createdAt ?? '',
+          }))
         : [],
 
-      // Last updated timestamp
-      lastUpdated:
-        d.lastUpdated ??
-        d.last_updated ??
-        '',
+      // Last updated
+      lastUpdated: d.last_updated ?? d.lastUpdated ?? '',
 
-      // Additional fields used by Insights screen
-      weeklyTrend:
-        d.weeklyTrend ??
-        d.weekly_trend ??
-        [],
+      // Fields not yet returned by backend - with smart fallbacks
+      weeklyTrend: Array.isArray(d.weeklyTrend) || Array.isArray(d.weekly_trend)
+        ? (d.weeklyTrend ?? d.weekly_trend)
+        : [],
 
-      clusterPercentage:
-        d.clusterPercentage ??
-        d.cluster_percentage ??
-        38,
+      clusterPercentage: d.cluster_percentage ?? d.clusterPercentage ?? 38,
 
-      clusterColor:
-        d.clusterColor ??
-        d.cluster_color ??
-        '#6366F1',
+      clusterColor: d.cluster_color ?? d.clusterColor ?? getClusterColor(userCluster),
 
-      incomeCycle:
-        d.incomeCycle ??
-        d.income_cycle ??
-        'monthly',
+      incomeCycle: d.income_cycle ?? d.incomeCycle ?? 'monthly',
 
-      nextIncomeDate:
-        d.nextIncomeDate ??
-        d.next_income_date ??
-        null,
+      nextIncomeDate: d.next_income_date ?? d.nextIncomeDate ?? null,
 
-      prediction:
-        d.prediction ??
-        '',
+      // Extra safety
+      predictions: Array.isArray(d.predictions) ? d.predictions : [],
     } as MLInsights;
   },
 
@@ -108,57 +71,48 @@ export const insightsService = {
     request: SmartPurchaseRequest
   ): Promise<SmartPurchaseDecision> => {
     const res = await api.post('/smart-purchase', {
-      amount:      request.amount,
-      category:    request.category,
+      amount: request.amount,
+      category: request.category,
       description: request.description ?? '',
     });
 
-    const d = res.data;
+    const d = res.data || {};
 
-    // Map backend recommendation/decision → frontend decision key
     const recommendationMap: Record<string, 'safe' | 'caution' | 'risky'> = {
-      recommended:     'safe',
-      safe:            'safe',
-      low:             'safe',
-      green:           'safe',
-      caution:         'caution',
-      medium:          'caution',
-      moderate:        'caution',
-      warning:         'caution',
-      yellow:          'caution',
+      recommended: 'safe',
+      safe: 'safe',
+      low: 'safe',
+      green: 'safe',
+      caution: 'caution',
+      medium: 'caution',
+      moderate: 'caution',
+      warning: 'caution',
+      yellow: 'caution',
       not_recommended: 'risky',
-      risky:           'risky',
-      high:            'risky',
-      danger:          'risky',
-      red:             'risky',
+      risky: 'risky',
+      high: 'risky',
+      danger: 'risky',
+      red: 'risky',
     };
 
-    const rawDecision = (
-      d.decision ??
-      d.recommendation ??
-      'caution'
-    ).toLowerCase();
-
+    const rawDecision = (d.decision ?? d.recommendation ?? 'caution').toLowerCase();
     const decision = recommendationMap[rawDecision] ?? 'caution';
 
-    // Derive riskScore since backend doesn't return one
     const riskScoreMap: Record<string, number> = {
-      safe:    20,
+      safe: 20,
       caution: 55,
-      risky:   90,
+      risky: 90,
     };
 
     return {
       decision,
-      riskScore:       d.risk_score ?? d.riskScore ?? riskScoreMap[decision],
-      reasoning:       d.reason ?? d.reasoning ?? '',
-      suggestions:     d.suggestions ?? [],
-      currentBalance:  d.balance_before ?? d.current_balance ?? d.currentBalance ?? 0,
+      riskScore: d.risk_score ?? d.riskScore ?? riskScoreMap[decision],
+      reasoning: d.reason ?? d.reasoning ?? '',
+      suggestions: Array.isArray(d.suggestions) ? d.suggestions : [],
+      currentBalance: d.balance_before ?? d.current_balance ?? d.currentBalance ?? 0,
       remainingBudget: d.balance_after ?? d.remaining_budget ?? d.remainingBudget ?? 0,
       estimatedDaysUntilShortfall:
-        d.estimated_days_until_shortfall ??
-        d.estimatedDaysUntilShortfall ??
-        null,
+        d.estimated_days_until_shortfall ?? d.estimatedDaysUntilShortfall ?? null,
     };
   },
 
@@ -166,42 +120,48 @@ export const insightsService = {
    * Get recommendations only.
    */
   getRecommendations: async (): Promise<string[]> => {
-    const res = await api.get('/insights');
-    const recommendations = res.data.recommendations ?? [];
-
-    if (!Array.isArray(recommendations)) {
+    try {
+      const res = await api.get('/insights');
+      const recs = res.data?.recommendations ?? [];
+      return Array.isArray(recs)
+        ? recs.map((r: any) => (typeof r === 'string' ? r : r.title ?? r.description ?? ''))
+        : [];
+    } catch {
       return [];
     }
-
-    return recommendations.map((r: any) =>
-      typeof r === 'string'
-        ? r
-        : r.title ?? r.description ?? 'Recommendation'
-    );
   },
 
   /**
    * Get user spending cluster.
    */
   getUserCluster: async (): Promise<string> => {
-    const res = await api.get('/insights');
-    return (
-      res.data.userCluster ??
-      res.data.user_cluster ??
-      'Balanced Spender'
-    );
+    try {
+      const res = await api.get('/insights');
+      return res.data?.user_cluster ?? res.data?.userCluster ?? 'Balanced Spender';
+    } catch {
+      return 'Balanced Spender';
+    }
   },
 
   /**
    * Get weekly predictions/trends.
    */
   getPredictions: async (): Promise<any[]> => {
-    const res = await api.get('/insights');
-    return (
-      res.data.predictions ??
-      res.data.weeklyTrend ??
-      res.data.weekly_trend ??
-      []
-    );
+    try {
+      const res = await api.get('/insights');
+      return res.data?.weekly_trend ?? res.data?.weeklyTrend ?? [];
+    } catch {
+      return [];
+    }
   },
 };
+
+/** Helper to assign nice colors based on cluster - Improved matching */
+function getClusterColor(cluster: string): string {
+  const c = cluster.toLowerCase();
+  if (c.includes('sav'))                      return '#2DD4BF';  // Savers / Saver
+  if (c.includes('impuls'))                   return '#F59E0B';  // Impulsive
+  if (c.includes('risk') || c.includes('danger') || c.includes('at-risk')) 
+    return '#ef4444';  // At-Risk
+  return '#6366F1';  // Default: Balanced
+}

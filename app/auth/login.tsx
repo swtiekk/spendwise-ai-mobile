@@ -74,10 +74,7 @@ export default function LoginScreen() {
   const validateForm = (): boolean => {
     const errors: typeof validationErrors = {};
     if (!email) {
-      errors.email = 'Email is required';
-      emailShake.shake();
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      errors.email = 'Invalid email format';
+      errors.email = 'Username is required';
       emailShake.shake();
     }
     if (!password) {
@@ -96,7 +93,7 @@ export default function LoginScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       await login({ 
-        username: email,  // ← map email field to username
+        username: email,
         password 
       });
     } catch (err) {
@@ -153,9 +150,9 @@ export default function LoginScreen() {
           {/* Form — dims while loading */}
           <Animated.View style={isLoading && s.formDimmed} pointerEvents={isLoading ? 'none' : 'auto'}>
 
-            {/* Email */}
+            {/* Username */}
             <Animated.View style={[s.fieldGroup, emailShake.shakeStyle]}>
-              <Text style={s.label}>Email Address</Text>
+              <Text style={s.label}>Username</Text>
               <View style={[
                 s.inputRow,
                 emailFocused           && s.inputFocused,
@@ -168,9 +165,8 @@ export default function LoginScreen() {
                 />
                 <TextInput
                   style={s.inputText}
-                  placeholder="you@example.com"
+                  placeholder="Enter your username"
                   placeholderTextColor={Colors.subtle}
-                  keyboardType="email-address"
                   autoCapitalize="none"
                   value={email}
                   onChangeText={v => { setEmail(v); clearField('email'); }}
