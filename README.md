@@ -91,3 +91,15 @@ Steve Drylle Sarino
 - The API base URL must be manually updated to match the backend server's local IP
 - Offline mode is not supported; all features require an active connection to the FastAPI backend
 - iOS build was not tested on a physical device; primarily developed and tested on Android
+
+## Screenshots
+![Screenshot](docs/1.png)
+![Screenshot](docs/2.png)
+![Screenshot](docs/3.png)
+![Screenshot](docs/4.png)
+![Screenshot](docs/5.png)
+![Screenshot](docs/6.png)
+![Screenshot](docs/7.png)
+![Screenshot](docs/8.png)
+![Screenshot](docs/9.png)
+![Screenshot](docs/10.png)
