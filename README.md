@@ -73,8 +73,7 @@ npx expo start
 - Press `i` for iOS simulator
 
 ## Deployment Link
-https://expo.dev/accounts/swtiekk/projects/spendwise-ai-mobile/builds/64ae8611-5275-41d7-851e-8e435b063d00?fbclid=IwY2xjawSCORhleHRuA2FlbQIxMABicmlkETFxczg4dlRRTVVhcXM4Szdlc3J0YwZhcHBfaWQQMjIyMDM5MTc4ODIwMDg5MgABHiIE0REDZ9ptSa2IeM1T6m4OtcuFB6ZSfPF2hE-ZRDfJ5zDTOSzwErdN7wT4_aem_zGdSfsC-9r8KPW6pO-hYZA
-
+https://expo.dev/accounts/swtiekk/projects/spendwise-ai-mobile/builds/64ae8611-5275-41d7-851e-8e435b063d00?fbclid=IwY2xjawSDzttleHRuA2FlbQIxMABicmlkETFzTUttTUxnSTFURmdWWUI1c3J0YwZhcHBfaWQQMjIyMDM5MTc4ODIwMDg5MgABHglTy4-4D-YA2Q7tMPrmz7GWEUH80vtZ4TNnZfA0l2UImsjDGRGF3kvQa8DA_aem_FQNjzn5KesMwrJXxqfYjTg
 
 
 ## Team Members and Roles
